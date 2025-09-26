@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Guess the Frame
+
+A multiplayer movie-frame trivia experience built with Next.js. Hosts spin up private rooms, collect stills, and challenge friends in real time while guests join from any device with a six-digit code.
+
+## Highlights
+
+- 🔐 **Host sessions** – Room creators receive an HTTP-only session cookie that unlocks match controls and frame management.
+- ⚡ **Live lobby updates** – Server-sent events keep every client in sync as players join, statuses change, and frames are queued.
+- 🗂️ **Persistent storage** – Prisma with SQLite stores rooms, players, and curated frames so matches survive restarts.
+- 🎛️ **Custom game pacing** – Hosts pick difficulty and party length; timers and frame quotas auto-adjust to keep rounds tight.
+- 🎨 **Tailored UI** – DaisyUI + Tailwind power a responsive lobby and landing page tuned for quick onboarding.
+
+## Tech Stack
+
+| Layer        | Details                                   |
+| ------------ | ------------------------------------------ |
+| Framework    | Next.js 15 (App Router, React 19)          |
+| Styling      | Tailwind CSS 3 + DaisyUI                   |
+| Database     | SQLite (via Prisma ORM)                    |
+| Realtime     | Server-Sent Events (SSE)                   |
+| Language     | TypeScript                                 |
+
+## Prerequisites
+
+- Node.js 18.18 or newer (recommended: the latest LTS release)
+- npm 9+ (installed with modern Node versions)
 
 ## Getting Started
 
-First, run the development server:
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Configure the database**
+   Create a `.env` file (if you do not already have one) and add:
+   ```env
+   DATABASE_URL="file:./prisma/dev.db"
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. **Sync the Prisma schema**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+   Visit [http://localhost:3000](http://localhost:3000) to use the app.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Development Notes
 
-## Learn More
+- **Linting**: `npm run lint`
+- **Database resets**: remove `prisma/dev.db` (and rerun `prisma db push`) if you need a clean slate.
+- **Host controls**: the first browser to create a room receives a `gtf_host_session` cookie. Only that session can change match status or add frames until you clear cookies or create a new host session.
+- **Realtime**: SSE endpoints live under `/api/rooms/[code]/events`; keep this in mind if you proxy requests.
+- **Party mechanics**: Hosts capture a URL and answer for each frame, then a 5-second warm-up kicks off timed rounds that auto-advance via `/api/rooms/[code]/advance` and score guesses through `/api/rooms/[code]/guess`.
 
-To learn more about Next.js, take a look at the following resources:
+## Deployment Checklist
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Swap the SQLite connection string for your production database (e.g., Postgres) and run `prisma migrate deploy`.
+- Ensure environment variables (like `DATABASE_URL`) are configured in your hosting platform.
+- Use `npm run build` followed by `npm start` (or your platform’s equivalent) to serve the production bundle.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Happy hosting!

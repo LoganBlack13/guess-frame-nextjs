@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { getRoom, updateRoomStatus, RoomStatus } from "@/lib/rooms";
+import {
+  GameDifficulty,
+  getRoom,
+  updateRoomSettings,
+  updateRoomStatus,
+  RoomStatus,
+} from "@/lib/rooms";
 import { HOST_SESSION_COOKIE } from "@/lib/session";
 
 interface Params {
@@ -29,9 +35,28 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     const body = await request.json();
-    const status = typeof body?.status === "string" ? body.status : "";
     const sessionToken = cookies().get(HOST_SESSION_COOKIE)?.value;
+    const hasSettings = typeof body?.settings === "object" && body.settings !== null;
+    const hasStatus = typeof body?.status === "string";
 
+    if (!hasSettings && !hasStatus) {
+      return NextResponse.json({ error: "No updates provided" }, { status: 400 });
+    }
+
+    if (hasSettings) {
+      const rawSettings = body.settings as { difficulty?: string; durationMinutes?: number };
+      const difficulty = rawSettings.difficulty ?? "";
+      const durationMinutes = Number(rawSettings.durationMinutes ?? NaN);
+
+      const room = await updateRoomSettings(code, sessionToken, {
+        difficulty: difficulty as GameDifficulty,
+        durationMinutes,
+      });
+
+      return NextResponse.json({ room });
+    }
+
+    const status = body.status as string;
     const room = await updateRoomStatus(code, status as RoomStatus, sessionToken);
 
     return NextResponse.json({ room });

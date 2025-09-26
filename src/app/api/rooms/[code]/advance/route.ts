@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { addFrame } from "@/lib/rooms";
+import { advanceFrame } from "@/lib/rooms";
 import { HOST_SESSION_COOKIE } from "@/lib/session";
 
 interface Params {
@@ -16,22 +16,18 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: "Room code is required" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const url = typeof body?.url === "string" ? body.url : "";
-    const answer = typeof body?.answer === "string" ? body.answer : "";
     const sessionToken = cookies().get(HOST_SESSION_COOKIE)?.value;
+    const room = await advanceFrame(code, sessionToken);
 
-    const frame = await addFrame(code, url, answer, sessionToken);
-
-    return NextResponse.json({ frame });
+    return NextResponse.json({ room });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not add frame.";
+    const message = error instanceof Error ? error.message : "Could not advance the frame.";
     const statusCode = message.includes("Only the host")
       ? 403
       : message.includes("Host session")
         ? 401
-        : message.includes("Room not found")
-          ? 404
+        : message.includes("Start the match")
+          ? 409
           : 400;
     return NextResponse.json({ error: message }, { status: statusCode });
   }
