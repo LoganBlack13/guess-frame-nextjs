@@ -6,6 +6,7 @@ import type {
   Player as PrismaPlayer,
   Room as PrismaRoom,
 } from "@prisma/client";
+import { MOVIE_FRAMES } from "@/data/movieFrames";
 import { prisma } from "./prisma";
 import { publishRoomUpdate } from "./roomEvents";
 
@@ -56,6 +57,7 @@ const MAX_ROOM_SIZE = 12;
 const DEFAULT_DIFFICULTY: GameDifficulty = "normal";
 const DEFAULT_DURATION_MINUTES = 10;
 const ALLOWED_DURATIONS = new Set([5, 10, 15]);
+const QUIZ_GENERATOR_ID = "quiz-generator";
 const defaultRoomInclude = {
   players: true,
   frames: {
@@ -63,6 +65,47 @@ const defaultRoomInclude = {
     orderBy: { order: "asc" as const },
   },
 } satisfies Prisma.RoomInclude;
+
+function shuffleArray<T>(values: T[]): T[] {
+  const copy = [...values];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function pickMovieFrameSeeds(count: number) {
+  const available = shuffleArray(MOVIE_FRAMES);
+  return available.slice(0, Math.min(count, available.length));
+}
+
+async function regenerateRoomFrames(
+  tx: Prisma.TransactionClient,
+  roomCode: string,
+  hostPlayerId: string | null,
+  targetCount: number,
+): Promise<void> {
+  await tx.frame.deleteMany({ where: { roomCode } });
+  const seeds = pickMovieFrameSeeds(targetCount);
+  const now = new Date();
+
+  if (seeds.length === 0) {
+    return;
+  }
+
+  await tx.frame.createMany({
+    data: seeds.map((seed, index) => ({
+      id: randomUUID(),
+      roomCode,
+      url: seed.imageUrl,
+      answer: seed.title,
+      addedBy: hostPlayerId ?? QUIZ_GENERATOR_ID,
+      order: index + 1,
+      createdAt: now,
+    })),
+  });
+}
 
 function normalizeAnswerText(value: string): string {
   return value.trim().replace(/\s+/g, " " ).toLowerCase();
@@ -107,7 +150,8 @@ function deriveGameSettings(
   const normalizedDifficulty = normalizeDifficulty(difficulty);
   const safeDuration = ALLOWED_DURATIONS.has(durationMinutes) ? durationMinutes : DEFAULT_DURATION_MINUTES;
   const guessWindowSeconds = DIFFICULTY_WINDOWS[normalizedDifficulty];
-  const targetFrameCount = calculateTargetFrameCount(safeDuration, guessWindowSeconds);
+  const rawTarget = calculateTargetFrameCount(safeDuration, guessWindowSeconds);
+  const targetFrameCount = Math.max(1, Math.min(rawTarget, MOVIE_FRAMES.length));
 
   return {
     difficulty: normalizedDifficulty,
@@ -209,38 +253,51 @@ export async function createRoom(hostName: string): Promise<CreateRoomResult> {
   const now = new Date();
   const gameSettings = deriveGameSettings();
 
-  const created = await prisma.room.create({
-    data: {
-      code: await generateRoomCode(),
-      status: "lobby",
-      createdAt: now,
-      difficulty: gameSettings.difficulty,
-      durationMinutes: gameSettings.durationMinutes,
-      guessWindowSeconds: gameSettings.guessWindowSeconds,
-      targetFrameCount: gameSettings.targetFrameCount,
-      roundStartedAt: null,
-      frameStartedAt: null,
-      currentFrameIndex: 0,
-      players: {
-        create: {
-          id: hostId,
-          name: trimmedName,
-          role: "host",
-          joinedAt: now,
-          sessionToken,
-          score: 0,
+  const { refreshedRoom, hostPlayer } = await prisma.$transaction(async (tx) => {
+    const createdRoom = await tx.room.create({
+      data: {
+        code: await generateRoomCode(),
+        status: "lobby",
+        createdAt: now,
+        difficulty: gameSettings.difficulty,
+        durationMinutes: gameSettings.durationMinutes,
+        guessWindowSeconds: gameSettings.guessWindowSeconds,
+        targetFrameCount: gameSettings.targetFrameCount,
+        roundStartedAt: null,
+        frameStartedAt: null,
+        currentFrameIndex: 0,
+        players: {
+          create: {
+            id: hostId,
+            name: trimmedName,
+            role: "host",
+            joinedAt: now,
+            sessionToken,
+            score: 0,
+          },
         },
       },
-    },
-    include: defaultRoomInclude,
+      include: { players: true },
+    });
+
+    const hostPlayerRecord = createdRoom.players.find((player) => player.id === hostId) ?? null;
+
+    await regenerateRoomFrames(tx, createdRoom.code, hostPlayerRecord?.id ?? null, gameSettings.targetFrameCount);
+
+    const refreshedRoomRecord = await tx.room.findUnique({
+      where: { code: createdRoom.code },
+      include: defaultRoomInclude,
+    });
+
+    if (!refreshedRoomRecord || !hostPlayerRecord) {
+      throw new Error("Failed to initialise the room quiz.");
+    }
+
+    return { refreshedRoom: refreshedRoomRecord, hostPlayer: hostPlayerRecord };
   });
 
-  const room = toRoom(created);
-  const host = room.players.find((player) => player.id === hostId);
-
-  if (!host) {
-    throw new Error("Failed to create host player");
-  }
+  const room = toRoom(refreshedRoom);
+  const host = toPlayer(hostPlayer);
 
   publishRoomUpdate(room);
 
@@ -613,6 +670,10 @@ export async function updateRoomSettings(
       where: { code: trimmedCode },
       data: updateData,
     });
+
+    if (currentRoom.status === "lobby") {
+      await regenerateRoomFrames(tx, trimmedCode, sessionPlayer.id, derived.targetFrameCount);
+    }
 
     const refreshedRoom = await tx.room.findUnique({
       where: { code: trimmedCode },

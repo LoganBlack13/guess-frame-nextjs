@@ -57,10 +57,6 @@ export default function LobbyClient({
   const [eventsConnected, setEventsConnected] = useState(true);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [frameUrl, setFrameUrl] = useState("");
-  const [frameAnswer, setFrameAnswer] = useState("");
-  const [isAddingFrame, setIsAddingFrame] = useState(false);
-  const [frameError, setFrameError] = useState<string | null>(null);
   const [difficultyChoice, setDifficultyChoice] = useState<GameDifficulty>(initialRoom.difficulty);
   const [durationChoice, setDurationChoice] = useState<number>(initialRoom.durationMinutes);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -426,48 +422,6 @@ export default function LobbyClient({
     void handleAdvanceFrame();
   }, [canAdvanceFrame, framesMissing, guessRemaining, preRollRemaining, room.frameStartedAt, room.status, handleAdvanceFrame]);
 
-  const handleAddFrame = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!canManage) {
-      setFrameError("Only the host can add frames.");
-      return;
-    }
-
-    if (!frameUrl.trim() || !frameAnswer.trim()) {
-      setFrameError("Provide both a frame URL and an answer.");
-      return;
-    }
-
-    setIsAddingFrame(true);
-    setFrameError(null);
-
-    try {
-      const response = await fetch(`/api/rooms/${roomCode}/frames`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: frameUrl, answer: frameAnswer }),
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        const message =
-          payload && typeof payload.error === "string" ? payload.error : "Could not add that frame.";
-        throw new Error(message);
-      }
-
-      setFrameUrl("");
-      setFrameAnswer("");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not add that frame.";
-      setFrameError(message);
-    } finally {
-      setIsAddingFrame(false);
-    }
-  };
-
   const handleGuessSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -778,7 +732,7 @@ export default function LobbyClient({
                 <ol className="list-decimal space-y-2 pl-5 text-sm text-base-content/70">
                   <li>Hosts have a 5 second pre-roll before the first frame appears.</li>
                   <li>Each frame runs for {room.guessWindowSeconds} seconds based on the selected difficulty.</li>
-                  <li>Guests lock in answers; the fastest correct guess earns 1 point. Inputs lock once you solve it.</li>
+                  <li>Guests lock in answers; every correct guess awards 1 point and your input locks once you solve it.</li>
                   <li>When the timer expires, the lobby auto-advances to the next frame until the match wraps.</li>
                 </ol>
               </div>
@@ -798,6 +752,11 @@ export default function LobbyClient({
                   const contributor = playersById.get(frame.addedBy);
                   const solvedCount = frame.solvedPlayerIds.length;
                   const youSolved = playerId ? frame.solvedPlayerIds.includes(playerId) : false;
+                  const contributorName = contributor
+                    ? contributor.name
+                    : frame.addedBy === "quiz-generator"
+                      ? "Quiz generator"
+                      : "Auto seeded";
                   return (
                     <li key={frame.id} className="rounded-lg border border-base-300 bg-base-100 p-4">
                       <div className="flex items-center justify-between">
@@ -816,7 +775,7 @@ export default function LobbyClient({
                         {frame.url}
                       </a>
                       <p className="mt-2 text-xs text-base-content/60">
-                        Added by {contributor ? contributor.name : "unknown"}
+                        Added by {contributorName}
                       </p>
                     </li>
                   );
@@ -824,7 +783,7 @@ export default function LobbyClient({
               </ul>
             ) : (
               <p className="text-sm text-base-content/60">
-                No frames yet. Hosts can drop image URLs and answers below to build the first trivia pack.
+                Quiz stills are ready to go once the host starts the match.
               </p>
             )}
           </div>
@@ -923,42 +882,8 @@ export default function LobbyClient({
                   {statusError}
                 </p>
               ) : null}
-              <form className="flex flex-col gap-3" onSubmit={handleAddFrame}>
-                <label className="form-control" htmlFor="frame-url">
-                  <span className="label-text">Frame image URL</span>
-                  <input
-                    id="frame-url"
-                    type="url"
-                    placeholder="https://cdn.example/frame.jpg"
-                    value={frameUrl}
-                    onChange={(event) => setFrameUrl(event.target.value)}
-                    className="input input-bordered"
-                    required
-                  />
-                </label>
-                <label className="form-control" htmlFor="frame-answer">
-                  <span className="label-text">Correct answer</span>
-                  <input
-                    id="frame-answer"
-                    type="text"
-                    placeholder="Movie title"
-                    value={frameAnswer}
-                    onChange={(event) => setFrameAnswer(event.target.value)}
-                    className="input input-bordered"
-                    required
-                  />
-                </label>
-                <button type="submit" className="btn btn-primary" disabled={isAddingFrame}>
-                  {isAddingFrame ? "Saving…" : "Add frame"}
-                </button>
-                {frameError ? (
-                  <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error" role="alert">
-                    {frameError}
-                  </p>
-                ) : null}
-              </form>
               <p className="text-sm text-base-content/60">
-                Coming soon: upload stills directly, set reveal timers, and script dramatic hint drops.
+                Quiz stills are preloaded from the movie library. Adjust the settings above or start the match when everyone is ready.
               </p>
             </div>
           </section>
