@@ -532,8 +532,13 @@ export function useRoomController({
       const result = await response.json();
       console.log('Game started successfully:', result);
       
-      // Rafraîchir la room pour voir les changements
-      await refreshRoom({ silent: false });
+      // Si la réponse contient la room mise à jour, l'utiliser directement
+      if (result.room) {
+        setRoom(result.room as Room);
+      } else {
+        // Sinon, rafraîchir la room pour voir les changements
+        await refreshRoom({ silent: false });
+      }
       
     } catch (error) {
       console.error('Failed to start game:', error);

@@ -25,9 +25,13 @@ export async function POST(request: Request) {
     const fetchPromise = quizGenerator.fetchAndStoreMovies(settings);
     
     // Retourner immédiatement pour ne pas bloquer la requête
-    fetchPromise.catch(error => {
-      console.error('Background fetch failed:', error);
-    });
+    fetchPromise
+      .then(result => {
+        console.log('✅ Background fetch completed:', result);
+      })
+      .catch(error => {
+        console.error('❌ Background fetch failed:', error);
+      });
 
     return NextResponse.json({ 
       message: 'Fetch started',

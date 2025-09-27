@@ -1,8 +1,37 @@
 import { prisma } from '../prisma';
 import { Game, Movie, GameFrame, GameEvent, GameEventData, GameStats, GameTimeline } from './types';
 
-// Créer une nouvelle partie
+// Créer une nouvelle partie ou récupérer la partie existante
 export async function createGame(roomCode: string): Promise<Game> {
+  // Vérifier s'il existe déjà une partie pour cette salle
+  const existingGame = await prisma.game.findUnique({
+    where: { roomCode },
+    include: {
+      events: true,
+      gameFrames: {
+        include: {
+          movie: true,
+        },
+        orderBy: {
+          order: 'asc',
+        },
+      },
+    },
+  });
+
+  // Si une partie existe et n'est pas terminée, la retourner
+  if (existingGame && existingGame.status !== 'completed') {
+    return existingGame as Game;
+  }
+
+  // Si une partie terminée existe, la supprimer d'abord
+  if (existingGame && existingGame.status === 'completed') {
+    await prisma.game.delete({
+      where: { id: existingGame.id },
+    });
+  }
+
+  // Créer une nouvelle partie
   const game = await prisma.game.create({
     data: {
       roomCode,
@@ -330,4 +359,43 @@ export async function getRoomGames(roomCode: string): Promise<Game[]> {
   });
 
   return games as Game[];
+}
+
+// Nettoyer les anciennes parties terminées d'une salle
+export async function cleanupCompletedGames(roomCode: string): Promise<void> {
+  await prisma.game.deleteMany({
+    where: {
+      roomCode,
+      status: 'completed',
+    },
+  });
+}
+
+// Vérifier si une partie existe pour une salle
+export async function getActiveGame(roomCode: string): Promise<Game | null> {
+  const game = await prisma.game.findFirst({
+    where: {
+      roomCode,
+      status: {
+        in: ['generated', 'started'],
+      },
+    },
+    include: {
+      events: {
+        orderBy: {
+          timestamp: 'asc',
+        },
+      },
+      gameFrames: {
+        include: {
+          movie: true,
+        },
+        orderBy: {
+          order: 'asc',
+        },
+      },
+    },
+  });
+
+  return game as Game | null;
 }

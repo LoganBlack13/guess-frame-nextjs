@@ -104,6 +104,8 @@ model Movie {
   posterUrl     String?
   backdropUrl   String?
   stillsUrls    String      // JSON array des URLs des stills
+  aspectRatio   Float?      // Ratio d'aspect de l'image
+  isScene       Boolean     @default(true) // true pour les scènes, false pour les posters
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   
@@ -112,6 +114,7 @@ model Movie {
   
   @@index([tmdbId])
   @@index([title])
+  @@index([releaseDate])
 }
 
 model GameFrame {

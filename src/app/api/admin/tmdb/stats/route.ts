@@ -6,19 +6,33 @@ export async function GET() {
     // Compter le total de films
     const totalMovies = await prisma.movie.count();
 
-    // Compter par genre
-    const moviesByGenre = await prisma.movie.groupBy({
-      by: ['genre'],
-      _count: {
-        id: true
+    // Compter par genre (les genres sont stockés en JSON dans le champ genres)
+    const allMovies = await prisma.movie.findMany({
+      select: {
+        genres: true,
+        releaseDate: true
       }
     });
 
-    // Compter par année
-    const moviesByYear = await prisma.movie.groupBy({
-      by: ['releaseYear'],
-      _count: {
-        id: true
+    // Traiter les genres (JSON string -> array)
+    const genreCounts: Record<string, number> = {};
+    const yearCounts: Record<string, number> = {};
+
+    allMovies.forEach(movie => {
+      // Compter les genres
+      try {
+        const genres = JSON.parse(movie.genres || '[]');
+        genres.forEach((genre: string) => {
+          genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+        });
+      } catch (e) {
+        // Ignorer les erreurs de parsing JSON
+      }
+
+      // Compter les années
+      if (movie.releaseDate) {
+        const year = movie.releaseDate.getFullYear().toString();
+        yearCounts[year] = (yearCounts[year] || 0) + 1;
       }
     });
 
@@ -30,14 +44,8 @@ export async function GET() {
 
     const stats = {
       totalMovies,
-      moviesByGenre: moviesByGenre.reduce((acc, item) => {
-        acc[item.genre] = item._count.id;
-        return acc;
-      }, {} as Record<string, number>),
-      moviesByYear: moviesByYear.reduce((acc, item) => {
-        acc[item.releaseYear.toString()] = item._count.id;
-        return acc;
-      }, {} as Record<string, number>),
+      moviesByGenre: genreCounts,
+      moviesByYear: yearCounts,
       lastUpdate: lastMovie?.createdAt?.toISOString() || null
     };
 

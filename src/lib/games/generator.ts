@@ -55,14 +55,13 @@ export class QuizGenerator {
       
       const whereClause: any = {};
       
-      if (genres && genres.length > 0) {
-        whereClause.genre = { in: genres };
-      }
+      // Note: Les genres sont stockés en JSON, donc on ne peut pas filtrer directement
+      // On récupérera tous les films et on filtrera côté application
       
       if (yearRange) {
-        whereClause.releaseYear = {
-          gte: yearRange.min,
-          lte: yearRange.max
+        whereClause.releaseDate = {
+          gte: new Date(yearRange.min, 0, 1),
+          lte: new Date(yearRange.max, 11, 31)
         };
       }
 
@@ -78,17 +77,38 @@ export class QuizGenerator {
         throw new Error('No movies found in database. Please fetch some movies first using the admin panel.');
       }
 
+      // Filtrer par genres si spécifié (côté application)
+      let filteredMovies = movies;
+      if (genres && genres.length > 0) {
+        filteredMovies = movies.filter(movie => {
+          try {
+            const movieGenres = JSON.parse(movie.genres || '[]');
+            return genres.some(genre => movieGenres.includes(genre));
+          } catch (e) {
+            return false;
+          }
+        });
+      }
+
       // Sélectionner aléatoirement les films pour le quiz
-      const shuffledMovies = this.shuffleArray(movies).slice(0, frameCount);
+      const shuffledMovies = this.shuffleArray(filteredMovies).slice(0, frameCount);
       
-      // Créer les frames
-      const frames: MovieFrame[] = shuffledMovies.map((movie, index) => ({
-        movieId: movie.id,
-        imageUrl: movie.posterUrl,
-        aspectRatio: movie.aspectRatio || 1.5,
-        isScene: movie.isScene || false,
-        order: index
-      }));
+      // Créer les frames avec des scènes de films (stills) au lieu de posters
+      const frames: MovieFrame[] = shuffledMovies.map((movie, index) => {
+        // Utiliser les stills (scènes) si disponibles, sinon les backdrops
+        const stills = movie.stillsUrls ? JSON.parse(movie.stillsUrls) : [];
+        const imageUrl = stills.length > 0 
+          ? stills[0] 
+          : movie.backdropUrl || movie.posterUrl || '';
+        
+        return {
+          movieId: movie.id,
+          imageUrl,
+          aspectRatio: stills.length > 0 ? 16/9 : 1.5, // 16:9 pour les scènes, 1.5 pour les posters
+          isScene: stills.length > 0, // true si c'est une scène, false si c'est un poster
+          order: index
+        };
+      });
 
       console.log(`🎯 Selected ${frames.length} frames for quiz`);
 
@@ -98,11 +118,11 @@ export class QuizGenerator {
         movies: shuffledMovies.map(movie => ({
           id: movie.id,
           title: movie.title,
-          releaseYear: movie.releaseYear,
-          genre: movie.genre,
-          posterUrl: movie.posterUrl,
-          aspectRatio: movie.aspectRatio || 1.5,
-          isScene: movie.isScene || false
+          releaseYear: movie.releaseDate ? movie.releaseDate.getFullYear() : 0,
+          genre: movie.genres, // JSON string
+          posterUrl: movie.posterUrl || '',
+          aspectRatio: 1.5,
+          isScene: true
         })),
         totalMovies: shuffledMovies.length,
         totalFrames: frames.length
@@ -131,17 +151,42 @@ export class QuizGenerator {
       for (let page = 1; page <= settings.pages; page++) {
         console.log(`📄 Fetching page ${page}/${settings.pages}...`);
         
-        const movies = await this.tmdbClient.getPopularMovies({
+        const response = await this.tmdbClient.discoverMovies({
           page,
-          genres: settings.genres.length > 0 ? settings.genres : undefined,
-          yearRange: settings.years
+          withGenres: settings.genres.length > 0 ? settings.genres.join(',') : undefined,
+          year: Math.floor((settings.years.min + settings.years.max) / 2), // Année moyenne
+          sortBy: 'popularity.desc',
+          voteAverageGte: 6.0,
+          voteCountGte: 100,
+          withoutGenres: '99,10770' // Exclure documentaires et TV
         });
         
+        const movies = response.results || [];
         totalFetched += movies.length;
         console.log(`📊 Page ${page} returned ${movies.length} movies`);
         
+        // Traiter chaque film pour récupérer les détails et images
+        const movieMetadataList: any[] = [];
+        for (const movie of movies) {
+          try {
+            const [details, images] = await Promise.all([
+              this.tmdbClient.getMovieDetails(movie.id),
+              this.tmdbClient.getMovieImages(movie.id)
+            ]);
+            
+            const metadata = this.tmdbClient.transformMovieToMetadata(details, images);
+            
+            // Vérifier qu'on a des images utilisables
+            if (this.tmdbClient.hasLandscapeImages(metadata)) {
+              movieMetadataList.push(metadata);
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch details for movie ${movie.id}:`, error);
+          }
+        }
+        
         // Sauvegarder les films en base
-        const savedMovies = await this.saveMoviesInBatches(movies);
+        const savedMovies = await this.saveMoviesInBatches(movieMetadataList);
         totalSaved += savedMovies.length;
         
         console.log(`💾 Saved ${savedMovies.length} movies from page ${page}`);
@@ -444,7 +489,7 @@ export class QuizGenerator {
   }
 
   // Sauvegarde les films par batch pour éviter les timeouts
-  private async saveMoviesInBatches(movies: MovieMetadata[], batchSize: number = 5): Promise<any[]> {
+  public async saveMoviesInBatches(movies: MovieMetadata[], batchSize: number = 5): Promise<any[]> {
     const savedMovies: any[] = [];
     
     for (let i = 0; i < movies.length; i += batchSize) {

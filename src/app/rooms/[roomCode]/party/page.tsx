@@ -14,7 +14,8 @@ function readParam(value: string | string[] | undefined): string | null {
 }
 
 export default async function PartyPage({ params, searchParams }: PartyPageProps) {
-  const initialRoom = await getRoom(params.roomCode);
+  const resolvedParams = await params;
+  const initialRoom = await getRoom(resolvedParams.roomCode);
 
   if (!initialRoom) {
     notFound();
@@ -27,7 +28,7 @@ export default async function PartyPage({ params, searchParams }: PartyPageProps
   return (
     <PartyClient
       initialRoom={initialRoom}
-      roomCode={params.roomCode}
+      roomCode={resolvedParams.roomCode}
       playerId={playerId}
       hostSessionActive={hostSessionActive}
     />

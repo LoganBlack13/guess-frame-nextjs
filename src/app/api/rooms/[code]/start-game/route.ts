@@ -4,6 +4,8 @@ import { QuizGenerator } from "@/lib/games";
 import { createGame, addGameFrames } from "@/lib/database";
 import { GameEventManager } from "@/lib/games";
 import { HOST_SESSION_COOKIE } from "@/lib/session";
+import { updateRoomStatus } from "@/lib/rooms";
+import { prisma } from "@/lib/prisma";
 
 interface Params {
   params: {
@@ -65,12 +67,12 @@ export async function POST(request: Request, { params }: Params) {
       totalMovies: quizResult.totalMovies
     });
 
-    // Créer la partie
+    // Créer ou récupérer la partie
     const game = await createGame(roomCode);
-    console.log('🎮 Game created:', game.id);
+    console.log('🎮 Game created/retrieved:', game.id);
 
-    // Créer les GameFrames
-    if (quizResult.frames.length > 0) {
+    // Créer les GameFrames seulement si elles n'existent pas déjà
+    if (quizResult.frames.length > 0 && game.gameFrames.length === 0) {
       await addGameFrames(
         game.id,
         quizResult.frames.map((frame, index) => ({
@@ -82,6 +84,8 @@ export async function POST(request: Request, { params }: Params) {
         }))
       );
       console.log(`🎬 Created ${quizResult.frames.length} GameFrames`);
+    } else if (game.gameFrames.length > 0) {
+      console.log(`🎬 GameFrames already exist (${game.gameFrames.length} frames)`);
     }
 
     // Enregistrer l'événement de génération
@@ -92,13 +96,25 @@ export async function POST(request: Request, { params }: Params) {
       frameCount
     );
 
+    // Mettre à jour le statut de la salle pour passer en "in-progress"
+    const updatedRoom = await updateRoomStatus(roomCode, "in-progress", sessionToken);
+    
+    // Réinitialiser l'index de la frame courante pour les GameFrames TMDB
+    console.log('🔄 Resetting currentFrameIndex to 0 for room:', roomCode);
+    await prisma.room.update({
+      where: { code: roomCode },
+      data: { currentFrameIndex: 0 }
+    });
+    console.log('✅ currentFrameIndex reset to 0');
+
     console.log('✅ Game setup completed successfully');
 
     return NextResponse.json({ 
       success: true,
       gameId: game.id,
       frameCount: quizResult.totalFrames,
-      movieCount: quizResult.totalMovies
+      movieCount: quizResult.totalMovies,
+      room: updatedRoom
     });
     
   } catch (error) {

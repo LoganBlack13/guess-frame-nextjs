@@ -6,7 +6,6 @@ import type {
   Player as PrismaPlayer,
   Room as PrismaRoom,
 } from "@prisma/client";
-import { MOVIE_FRAMES } from "@/data/movieFrames";
 import { prisma } from "./prisma";
 import { publishRoomUpdate, publishPartyRedirect, publishPartyCountdown } from "./roomEvents";
 import type { MovieFrame } from './tmdb/types';
@@ -65,7 +64,19 @@ const defaultRoomInclude = {
     include: { guesses: true },
     orderBy: { order: "asc" as const },
   },
-} satisfies Prisma.RoomInclude;
+  game: {
+    include: {
+      gameFrames: {
+        include: {
+          movie: true,
+        },
+        orderBy: {
+          order: "asc" as const,
+        },
+      },
+    },
+  },
+} as const;
 
 function shuffleArray<T>(values: T[]): T[] {
   const copy = [...values];
@@ -76,77 +87,27 @@ function shuffleArray<T>(values: T[]): T[] {
   return copy;
 }
 
-function pickMovieFrameSeeds(count: number) {
-  const available = shuffleArray(MOVIE_FRAMES);
-  return available.slice(0, Math.min(count, available.length));
-}
 
-async function regenerateRoomFrames(
-  tx: Prisma.TransactionClient,
-  roomCode: string,
-  hostPlayerId: string | null,
-  targetCount: number,
-): Promise<void> {
-  await tx.frame.deleteMany({ where: { roomCode } });
-  const seeds = pickMovieFrameSeeds(targetCount);
-  const now = new Date();
-
-  if (seeds.length === 0) {
-    return;
-  }
-
-  await tx.frame.createMany({
-    data: seeds.map((seed, index) => ({
-      id: randomUUID(),
-      roomCode,
-      url: seed.imageUrl,
-      answer: seed.title,
-      addedBy: hostPlayerId ?? QUIZ_GENERATOR_ID,
-      order: index + 1,
-      createdAt: now,
-    })),
-  });
-}
 
 function normalizeAnswerText(value: string): string {
   return value.trim().replace(/\s+/g, " " ).toLowerCase();
 }
 
 function answersMatch(submitted: string, expected: string): boolean {
-  return normalizeAnswerText(submitted) === normalizeAnswerText(expected);
+  const normalizedSubmitted = normalizeAnswerText(submitted);
+  const normalizedExpected = normalizeAnswerText(expected);
+  
+  console.log('🔍 Answer comparison:');
+  console.log('  Original submitted:', submitted);
+  console.log('  Original expected:', expected);
+  console.log('  Normalized submitted:', normalizedSubmitted);
+  console.log('  Normalized expected:', normalizedExpected);
+  console.log('  Match:', normalizedSubmitted === normalizedExpected);
+  
+  return normalizedSubmitted === normalizedExpected;
 }
 
-// Synchronise les frames TMDB avec les frames de la room
-async function syncTMDBFramesToRoom(
-  tx: Prisma.TransactionClient,
-  roomCode: string,
-  tmdbFrames: (MovieFrame & { title?: string })[],
-  hostPlayerId: string | null,
-): Promise<void> {
-  // Supprimer les anciennes frames
-  await tx.frame.deleteMany({ where: { roomCode } });
-  
-  if (tmdbFrames.length === 0) {
-    return;
-  }
-
-  const now = new Date();
-  
-  // Créer les frames de la room à partir des frames TMDB
-  await tx.frame.createMany({
-    data: tmdbFrames.map((frame, index) => ({
-      id: randomUUID(),
-      roomCode,
-      url: frame.imageUrl,
-      answer: frame.title || `Movie ${frame.movieId}`,
-      addedBy: hostPlayerId ?? QUIZ_GENERATOR_ID,
-      order: index + 1,
-      createdAt: now,
-    })),
-  });
-  
-  console.log(`✅ Created ${tmdbFrames.length} TMDB frames in room ${roomCode}`);
-}
+// This function is no longer needed - frames are created only when games start
 
 const PRE_ROLL_SECONDS = 5;
 
@@ -184,7 +145,7 @@ function deriveGameSettings(
   const safeDuration = ALLOWED_DURATIONS.has(durationMinutes) ? durationMinutes : DEFAULT_DURATION_MINUTES;
   const guessWindowSeconds = DIFFICULTY_WINDOWS[normalizedDifficulty];
   const rawTarget = calculateTargetFrameCount(safeDuration, guessWindowSeconds);
-  const targetFrameCount = Math.max(1, Math.min(rawTarget, MOVIE_FRAMES.length));
+  const targetFrameCount = Math.max(1, rawTarget);
 
   return {
     difficulty: normalizedDifficulty,
@@ -236,8 +197,55 @@ function toFrame(frame: PrismaFrame & { guesses?: PrismaGuess[] }): Frame {
 }
 
 function toRoom(
-  room: PrismaRoom & { players: PrismaPlayer[]; frames: (PrismaFrame & { guesses?: PrismaGuess[] })[] },
+  room: PrismaRoom & { 
+    players: PrismaPlayer[]; 
+    frames: (PrismaFrame & { guesses?: PrismaGuess[] })[]; 
+    game?: {
+      gameFrames: Array<{
+        id: string;
+        imageUrl: string;
+        aspectRatio: number;
+        isScene: boolean;
+        order: number;
+        movie: {
+          title: string;
+        };
+      }>;
+    } | null;
+  },
 ): Room {
+  // All frames now come from GameFrames (database-generated quizzes)
+  const frames = room.game?.gameFrames?.length 
+    ? room.game.gameFrames.map((gameFrame, index) => {
+        console.log(`🎬 Creating frame ${index}:`, {
+          id: gameFrame.id,
+          movieTitle: gameFrame.movie.title,
+          imageUrl: gameFrame.imageUrl,
+          order: gameFrame.order
+        });
+        
+        return {
+          id: gameFrame.id,
+          url: gameFrame.imageUrl,
+          answer: gameFrame.movie.title,
+          addedBy: "tmdb-generator",
+          order: gameFrame.order,
+          createdAt: Date.now(),
+          solvedPlayerIds: [], // TODO: Get from guesses
+        };
+      }).sort((a, b) => a.order - b.order)
+    : []; // No fallback - all frames come from database
+
+  // Only log frames if there are any (avoid unnecessary logs on homepage)
+  if (frames.length > 0) {
+    console.log('📋 Final frames array:', frames.map((f, i) => ({ 
+      arrayIndex: i, 
+      order: f.order, 
+      title: f.answer, 
+      id: f.id 
+    })));
+  }
+
   return {
     code: room.code,
     createdAt: room.createdAt.getTime(),
@@ -245,13 +253,11 @@ function toRoom(
     players: room.players
       .map(toPlayer)
       .sort((a, b) => a.joinedAt - b.joinedAt),
-    frames: room.frames
-      .map(toFrame)
-      .sort((a, b) => a.order - b.order || a.createdAt - b.createdAt),
+    frames,
     difficulty: normalizeDifficulty(room.difficulty),
     durationMinutes: room.durationMinutes,
     guessWindowSeconds: room.guessWindowSeconds,
-    targetFrameCount: room.targetFrameCount,
+    targetFrameCount: room.game?.gameFrames?.length || room.targetFrameCount,
     roundStartedAt: room.roundStartedAt ? room.roundStartedAt.getTime() : null,
     frameStartedAt: room.frameStartedAt ? room.frameStartedAt.getTime() : null,
     currentFrameIndex: room.currentFrameIndex,
@@ -275,7 +281,7 @@ async function generateRoomCode(): Promise<string> {
   }
 }
 
-export async function createRoom(hostName: string, useTMDB: boolean = false): Promise<CreateRoomResult> {
+export async function createRoom(hostName: string): Promise<CreateRoomResult> {
   const trimmedName = hostName.trim();
   if (!trimmedName) {
     throw new Error("Host name is required");
@@ -315,59 +321,7 @@ export async function createRoom(hostName: string, useTMDB: boolean = false): Pr
 
     const hostPlayerRecord = createdRoom.players.find((player) => player.id === hostId) ?? null;
 
-    // Générer les frames selon le mode choisi
-    if (useTMDB) {
-      console.log('🎬 TMDB mode activated for room:', createdRoom.code);
-      console.log('🔑 TMDB API Key available:', !!process.env.TMDB_API_KEY);
-      
-      // Générer un quiz avec TMDB
-      try {
-        const { QuizGenerator } = await import('./games');
-        const { createGame } = await import('./database');
-        
-        const apiKey = process.env.TMDB_API_KEY || '';
-        if (!apiKey) {
-          throw new Error('TMDB_API_KEY environment variable is not set');
-        }
-        
-        console.log('🚀 Creating TMDB QuizGenerator...');
-        const quizGenerator = new QuizGenerator(apiKey);
-        
-        console.log('🎯 Generating TMDB quiz...');
-        const quizResult = await quizGenerator.generateQuickQuiz(
-          createdRoom.code, 
-          gameSettings.targetFrameCount
-        );
-        
-        console.log('✅ TMDB quiz generated:', {
-          gameId: quizResult.gameId,
-          totalFrames: quizResult.totalFrames,
-          totalMovies: quizResult.totalMovies
-        });
-        
-        // Synchroniser les GameFrames TMDB avec les Frames de la room
-        console.log('🔄 Syncing TMDB frames to room...');
-        await syncTMDBFramesToRoom(tx, createdRoom.code, quizResult.frames, hostPlayerRecord?.id ?? null);
-        
-        // Stocker les données pour après la transaction
-        global.tmdbQuizData = {
-          frames: quizResult.frames,
-          movies: quizResult.movies,
-          gameId: quizResult.gameId
-        };
-        
-        console.log('✅ TMDB room setup completed');
-      } catch (error) {
-        console.error('❌ TMDB generation failed:', error);
-        console.warn('🔄 Falling back to static frames...');
-        // Fallback vers l'ancien système
-        await regenerateRoomFrames(tx, createdRoom.code, hostPlayerRecord?.id ?? null, gameSettings.targetFrameCount);
-      }
-    } else {
-      console.log('📚 Using static frames mode for room:', createdRoom.code);
-      // Utiliser l'ancien système avec les frames statiques
-      await regenerateRoomFrames(tx, createdRoom.code, hostPlayerRecord?.id ?? null, gameSettings.targetFrameCount);
-    }
+    // No quiz generation during room creation - quizzes are generated only when game starts
 
     const refreshedRoomRecord = await tx.room.findUnique({
       where: { code: createdRoom.code },
@@ -381,53 +335,7 @@ export async function createRoom(hostName: string, useTMDB: boolean = false): Pr
     return { refreshedRoom: refreshedRoomRecord, hostPlayer: hostPlayerRecord };
   });
 
-  // Créer la partie associée APRÈS la transaction pour éviter les contraintes de clés étrangères
-  if (useTMDB) {
-    try {
-      console.log('🎮 Creating game record after transaction...');
-      const { createGame } = await import('./database');
-      const game = await createGame(refreshedRoom.code);
-      
-      // Sauvegarder les films en base APRÈS la transaction pour éviter les timeouts
-      console.log('💾 Saving movies to database in batches (after transaction)...');
-      const { QuizGenerator } = await import('./games');
-      const quizGenerator = new QuizGenerator(process.env.TMDB_API_KEY || '');
-      const savedMovies = await quizGenerator.saveMoviesInBatches(global.tmdbQuizData.movies);
-      
-      // Créer les GameFrames avec les films sauvegardés
-      if (savedMovies.length > 0) {
-        console.log('🎬 Creating GameFrames with saved movies...');
-        const { addGameFrames } = await import('./database');
-        await addGameFrames(
-          game.id,
-          global.tmdbQuizData.frames.map((frame, index) => ({
-            movieId: savedMovies.find(m => m.tmdbId === frame.movieId)?.id || '',
-            imageUrl: frame.imageUrl,
-            aspectRatio: frame.aspectRatio,
-            isScene: frame.isScene,
-            order: index,
-          }))
-        );
-      }
-      
-      // Nettoyer les données temporaires
-      delete global.tmdbQuizData;
-      
-      // Enregistrer l'événement de génération
-      const { GameEventManager } = await import('./games');
-      await GameEventManager.recordGameStarted(
-        game.id,
-        refreshedRoom.code,
-        1, // Seulement l'hôte pour l'instant
-        gameSettings.targetFrameCount
-      );
-      
-      console.log('✅ Game record created:', game.id);
-    } catch (error) {
-      console.warn('⚠️ Failed to create game record:', error);
-      // Ce n'est pas critique pour le fonctionnement du jeu
-    }
-  }
+  // Game creation is now handled when the game starts, not during room creation
 
   const room = toRoom(refreshedRoom);
   const host = toPlayer(hostPlayer);
@@ -603,7 +511,8 @@ export async function updateRoomStatus(
     };
 
     if (normalizedStatus === "in-progress") {
-      if (room.frames.length === 0) {
+      // Check for game frames instead of static frames
+      if (!room.game || !(room.game as any).gameFrames || (room.game as any).gameFrames.length === 0) {
         throw new Error("Add at least one frame before starting the match.");
       }
       updateData.roundStartedAt = now;
@@ -826,9 +735,7 @@ export async function updateRoomSettings(
       data: updateData,
     });
 
-    if (currentRoom.status === "lobby") {
-      await regenerateRoomFrames(tx, trimmedCode, sessionPlayer.id, derived.targetFrameCount);
-    }
+    // Room settings updated - frames will be generated when game starts
 
     const refreshedRoom = await tx.room.findUnique({
       where: { code: trimmedCode },
@@ -879,9 +786,10 @@ export async function advanceFrame(
       throw new Error("Only the host can advance frames.");
     }
 
-    const totalFrames = room.frames.length;
+    // Use GameFrames instead of static frames
+    const totalFrames = (room.game as any)?.gameFrames?.length || 0;
     if (totalFrames === 0) {
-      throw new Error("Host needs to add frames before advancing.");
+      throw new Error("No game frames available for advancing.");
     }
 
     const effectiveTarget = Math.max(1, Math.min(room.targetFrameCount, totalFrames));
@@ -970,24 +878,65 @@ export async function submitGuess(
       throw new Error("Wait for the frame reveal before guessing.");
     }
 
-    if (room.frames.length === 0) {
-      throw new Error("Host hasn't added any frames yet.");
+    // Check if there are GameFrames available
+    const hasGameFrames = (room.game as any)?.gameFrames?.length > 0;
+    
+    if (!hasGameFrames) {
+      throw new Error("No game frames available. Start a new game first.");
     }
 
+    // Use GameFrames (all quizzes now come from database)
     const currentFrameIndex = room.currentFrameIndex;
-    const currentFrame = room.frames[currentFrameIndex];
+    const gameFrames = (room.game as any)?.gameFrames || [];
+    const currentFrame = gameFrames[currentFrameIndex];
+    
+    console.log('🎯 GameFrames System Debug:');
+    console.log('  Has GameFrames:', hasGameFrames);
+    console.log('  Current frame index:', currentFrameIndex);
+    console.log('  Total GameFrames available:', gameFrames.length);
+    console.log('  Room currentFrameIndex from DB:', room.currentFrameIndex);
+    console.log('  Game ID:', (room.game as any)?.id);
+    console.log('  GameFrames count:', (room.game as any)?.gameFrames?.length);
+
+    console.log('🎯 Frame Index Debug:');
+    console.log('  Current frame index:', currentFrameIndex);
+    console.log('  Total frames available:', gameFrames.length);
+    console.log('  All frames:', gameFrames.map((f: any, i: number) => ({ index: i, title: f.movie.title, id: f.id })));
+    console.log('  Frame at current index:', currentFrame ? { title: currentFrame.movie.title, id: currentFrame.id } : 'NO FRAME');
 
     if (!currentFrame) {
       throw new Error("Host needs to add more frames before continuing.");
     }
 
-    const alreadySolved = await tx.guess.findFirst({
-      where: {
-        frameId: currentFrame.id,
-        playerId: trimmedPlayerId,
-        isCorrect: true,
-      },
-    });
+    // Check if already solved using GameEvents
+    let alreadySolved = false;
+    const game = room.game as any;
+    if (game && game.id) {
+      const gameEvent = await (tx as any).gameEvent.findFirst({
+        where: {
+          gameId: game.id,
+          type: "guess_submitted",
+          data: {
+            contains: JSON.stringify({
+              playerId: trimmedPlayerId,
+              frameIndex: currentFrameIndex,
+              isCorrect: true
+            })
+          }
+        }
+      });
+      alreadySolved = !!gameEvent;
+    }
+    
+    // Compare with movie title
+    console.log('🎬 GameFrame Debug:');
+    console.log('  Expected movie title:', currentFrame.movie.title);
+    console.log('  User answer:', trimmedAnswer);
+    console.log('  Frame ID:', currentFrame.id);
+    console.log('  Frame order:', currentFrame.order);
+    
+    const isCorrect = answersMatch(trimmedAnswer, currentFrame.movie.title);
+    console.log('  Match result:', isCorrect);
 
     if (alreadySolved) {
       return {
@@ -996,18 +945,22 @@ export async function submitGuess(
       };
     }
 
-    const isCorrect = answersMatch(trimmedAnswer, currentFrame.answer);
-
-    await tx.guess.create({
-      data: {
-        roomCode: room.code,
-        frameId: currentFrame.id,
-        playerId: trimmedPlayerId,
-        answer: trimmedAnswer,
-        isCorrect,
-        awardedPoints: isCorrect ? 1 : 0,
-      },
-    });
+    // Record guess in GameEvents
+    if (game && game.id) {
+      await (tx as any).gameEvent.create({
+        data: {
+          gameId: game.id,
+          type: "guess_submitted",
+          data: JSON.stringify({
+            playerId: trimmedPlayerId,
+            frameIndex: currentFrameIndex,
+            answer: trimmedAnswer,
+            isCorrect,
+            timestamp: new Date().toISOString()
+          })
+        }
+      });
+    }
 
     if (isCorrect) {
       await tx.player.update({

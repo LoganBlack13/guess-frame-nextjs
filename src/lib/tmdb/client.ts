@@ -196,7 +196,7 @@ export class TMDBClient {
   }
 
   // Vérifie si un film a des images au format paysage utilisables
-  private hasLandscapeImages(movie: MovieMetadata): boolean {
+  hasLandscapeImages(movie: MovieMetadata): boolean {
     // Vérifier les stills (scènes du film)
     const validStills = movie.images.stills.filter(url => 
       url.includes('still') || url.includes('backdrop')

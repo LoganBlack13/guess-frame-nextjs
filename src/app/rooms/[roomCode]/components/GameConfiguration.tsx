@@ -191,15 +191,15 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
 
         {/* Paramètres avancés */}
         <div>
-          <Button
-            variant="outline"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            disabled={isGenerating}
-            className="w-full"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            {showAdvanced ? 'Masquer' : 'Afficher'} les paramètres avancés
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              disabled={isGenerating}
+              className="w-full"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              {showAdvanced ? 'Masquer' : 'Afficher'} les paramètres avancés
+            </Button>
 
           {showAdvanced && (
             <div className="mt-4 space-y-4 p-4 bg-base-100 rounded-lg border">

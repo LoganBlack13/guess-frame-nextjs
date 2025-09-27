@@ -6,6 +6,7 @@ interface RoomPageProps {
   };
 }
 
-export default function RoomIndexPage({ params }: RoomPageProps) {
-  redirect(`/rooms/${params.roomCode}/lobby`);
+export default async function RoomIndexPage({ params }: RoomPageProps) {
+  const resolvedParams = await params;
+  redirect(`/rooms/${resolvedParams.roomCode}/lobby`);
 }

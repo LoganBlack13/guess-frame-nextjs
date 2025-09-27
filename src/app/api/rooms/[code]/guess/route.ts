@@ -9,7 +9,8 @@ interface Params {
 
 export async function POST(request: Request, { params }: Params) {
   try {
-    const code = params.code.trim();
+    const resolvedParams = await params;
+    const code = resolvedParams.code.trim();
     if (!code) {
       return NextResponse.json({ error: "Room code is required" }, { status: 400 });
     }
