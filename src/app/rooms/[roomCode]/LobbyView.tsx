@@ -257,7 +257,7 @@ export function LobbyView(props: LobbyViewProps) {
                   type="button"
                   className="btn btn-ghost"
                   onClick={() => mutateStatus("lobby")}
-                  disabled={isUpdatingStatus || room.status === "lobby"}
+                  disabled={isUpdatingStatus}
                 >
                   Reset to lobby
                 </button>

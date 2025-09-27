@@ -21,7 +21,7 @@ export async function createGame(roomCode: string): Promise<Game> {
 
   // Si une partie existe et n'est pas terminée, la retourner
   if (existingGame && existingGame.status !== 'completed') {
-    return existingGame as Game;
+    return existingGame as unknown as Game;
   }
 
   // Si une partie terminée existe, la supprimer d'abord
@@ -52,7 +52,7 @@ export async function createGame(roomCode: string): Promise<Game> {
     },
   });
 
-  return game as Game;
+  return game as unknown as Game;
 }
 
 // Démarrer une partie
@@ -76,7 +76,7 @@ export async function startGame(gameId: string): Promise<Game> {
     },
   });
 
-  return game as Game;
+  return game as unknown as Game;
 }
 
 // Terminer une partie
@@ -100,7 +100,7 @@ export async function completeGame(gameId: string): Promise<Game> {
     },
   });
 
-  return game as Game;
+  return game as unknown as Game;
 }
 
 // Récupérer une partie par ID
@@ -203,7 +203,7 @@ export async function createOrGetMovie(movieData: {
   });
 
   if (existingMovie) {
-    return existingMovie as Movie;
+    return existingMovie as unknown as Movie;
   }
 
   // Créer le nouveau film
@@ -224,7 +224,7 @@ export async function createOrGetMovie(movieData: {
     },
   });
 
-  return movie as Movie;
+  return movie as unknown as Movie;
 }
 
 // Ajouter des frames à une partie
@@ -258,7 +258,7 @@ export async function addGameFrames(gameId: string, frames: Array<{
     },
   });
 
-  return createdFrames as GameFrame[];
+  return createdFrames as unknown as GameFrame[];
 }
 
 // Récupérer les statistiques d'une partie
@@ -358,7 +358,7 @@ export async function getRoomGames(roomCode: string): Promise<Game[]> {
     },
   });
 
-  return games as Game[];
+  return games as unknown as Game[];
 }
 
 // Nettoyer les anciennes parties terminées d'une salle

@@ -3,29 +3,6 @@
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-const featureHighlights = [
-  {
-    title: "Instant screening rooms",
-    description:
-      "Start a private round in seconds, drop your favourite movie and series frames, and keep the suspense alive with optional hints.",
-  },
-  {
-    title: "Join from any screen",
-    description:
-      "Friends hop in from phones, tablets, or laptops using a quick six-digit code—no downloads or accounts required.",
-  },
-  {
-    title: "Live score tracker",
-    description:
-      "See guesses lock in, reveal answers dramatically, and climb the leaderboard as frames flip by in real time.",
-  },
-  {
-    title: "Your frames, your rules",
-    description:
-      "Upload custom stills, set timed reveals, or remix community-curated frame packs for every movie night theme.",
-  },
-];
-
 export default function Home() {
   const router = useRouter();
 
@@ -116,174 +93,185 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-base-100">
-      <header className="border-b border-base-300 bg-base-100">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-semibold text-primary">Guess the Frame</span>
-            <span className="badge badge-outline badge-sm border-primary text-primary">beta</span>
-          </div>
-          <nav className="flex items-center gap-4 text-sm">
-            <a className="link link-hover" href="#features">
-              Features
-            </a>
-            <a className="link link-hover" href="#roadmap">
-              Roadmap
-            </a>
-            <a className="btn btn-sm btn-primary" href="#play">
-              Open lobby tools
-            </a>
-          </nav>
+    <div className="full-height synthwave-bg grid-pattern relative overflow-hidden">
+      {/* Navigation */}
+      <div className="navbar bg-base-100/10 backdrop-blur-sm border-b border-primary/20">
+        <div className="navbar-start">
+          <a className="btn btn-ghost text-xl font-bold movie-icon">🎬 Guess the Frame</a>
         </div>
-      </header>
+        <div className="navbar-end">
+          <div className="dropdown dropdown-end">
+            <div tabIndex={0} role="button" className="btn btn-ghost">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            </div>
+            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+              <li><a data-set-theme="light">☀️ Light</a></li>
+              <li><a data-set-theme="dark">🌙 Dark</a></li>
+              <li><a data-set-theme="synthwave">🌆 Synthwave</a></li>
+              <li><a data-set-theme="retro">📺 Retro</a></li>
+              <li><a data-set-theme="cyberpunk">🤖 Cyberpunk</a></li>
+              <li><a data-set-theme="valentine">💖 Valentine</a></li>
+              <li><a data-set-theme="halloween">🎃 Halloween</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-6 py-16">
-        <section id="play" className="flex w-full flex-col items-center text-center">
-          <span className="badge badge-primary badge-outline mb-6 uppercase tracking-wide">
-            Multiplayer movie quiz
-          </span>
-          <h1 className="text-balance text-4xl font-bold text-base-content sm:text-5xl lg:text-6xl">
-            Challenge friends to guess the movie from a single frame
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-base-content/70">
-            Guess the Frame lets you host real-time cinematic trivia, stream dramatic stills, and crown
-            the quickest cinephile in your crew—whether you&apos;re together or apart.
-          </p>
-
-          <div className="mt-10 grid w-full gap-6 lg:grid-cols-2">
-            <div className="card border border-base-300 bg-base-200 shadow-lg">
-              <div className="card-body items-stretch text-left">
-                <h2 className="card-title text-2xl font-semibold text-base-content">Host a new room</h2>
-                <p className="text-base text-base-content/70">
-                  Name yourself, spin up a private lobby, and a six-digit code will be ready to share instantly.
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-6xl">
+          {/* Title Section */}
+          <div className="text-center mb-12">
+            <div className="badge badge-primary badge-outline mb-6 neon-glow">
+              <span className="neon-text">BETA</span>
+            </div>
+            <h1 className="text-6xl md:text-8xl font-bold mb-6">
+              <span className="movie-icon neon-text">GUESS THE FRAME</span>
+            </h1>
+            <p className="text-2xl md:text-3xl text-base-content/80 mb-4">
+              🎮 <span className="movie-icon">RETRO MOVIE GAME</span> 🎮
+            </p>
+            <p className="text-lg text-base-content/70">
+              Challenge yourself with iconic <span className="movie-icon font-bold">movie frames!</span>
+            </p>
+          </div>
+          
+          {/* Main Action Cards */}
+          <div className="grid lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Create Room Card */}
+            <div className="card bg-base-100/20 backdrop-blur-sm shadow-2xl retro-border">
+              <div className="card-body">
+                <h2 className="card-title text-2xl movie-icon justify-center mb-6">
+                  🎬 CREATE ROOM
+                </h2>
+                <p className="text-center text-base-content/70 mb-6">
+                  Start a new game and invite your friends
                 </p>
-                <form className="mt-4 flex flex-col gap-3" onSubmit={handleCreateRoom} aria-label="Create new room">
-                  <label className="form-control w-full" htmlFor="host-name">
-                    <span className="label-text">Display name</span>
+                
+                <form onSubmit={handleCreateRoom} className="space-y-4">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text text-base-content">Your name</span>
+                    </label>
                     <input
-                      id="host-name"
-                      name="hostName"
                       type="text"
-                      placeholder="Sofia the Host"
+                      placeholder="Enter your name"
                       value={hostName}
                       onChange={(event) => setHostName(event.target.value)}
-                      className="input input-bordered"
+                      className="input input-bordered w-full bg-base-100/50"
                       required
                       minLength={2}
                       maxLength={24}
                     />
-                  </label>
+                  </div>
                   
-                  <button type="submit" className="btn btn-primary" disabled={isCreating}>
-                    {isCreating ? "Creating…" : "Launch lobby"}
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary w-full neon-glow"
+                    disabled={isCreating}
+                  >
+                    {isCreating ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm"></span>
+                        Creating...
+                      </>
+                    ) : (
+                      "🎮 CREATE GAME"
+                    )}
                   </button>
-                  <p className="text-xs text-base-content/50">
-                    You&apos;ll hop into the lobby as host and can kick off rounds once everyone arrives.
-                  </p>
-                  {createError ? (
-                    <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error" role="alert">
-                      {createError}
-                    </p>
-                  ) : null}
+                  
+                  {createError && (
+                    <div className="alert alert-error">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{createError}</span>
+                    </div>
+                  )}
                 </form>
               </div>
             </div>
 
-            <div className="card border border-base-300 bg-base-200 shadow-lg">
-              <div className="card-body items-stretch text-left">
-                <h2 className="card-title text-2xl font-semibold text-base-content">Join your friends</h2>
-                <p className="text-base text-base-content/70">
-                  Drop the code your host shares, choose a name for the scoreboard, and you&apos;ll be in the lobby.
+            {/* Join Room Card */}
+            <div className="card bg-base-100/20 backdrop-blur-sm shadow-2xl retro-border">
+              <div className="card-body">
+                <h2 className="card-title text-2xl movie-icon justify-center mb-6">
+                  🎯 JOIN ROOM
+                </h2>
+                <p className="text-center text-base-content/70 mb-6">
+                  Enter a room code to join an existing game
                 </p>
-                <form className="form-control mt-4 gap-4" onSubmit={handleJoinRoom} aria-label="Join existing room">
-                  <label className="form-control" htmlFor="join-name">
-                    <span className="label-text">Display name</span>
+                
+                <form onSubmit={handleJoinRoom} className="space-y-4">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text text-base-content">Your name</span>
+                    </label>
                     <input
-                      id="join-name"
-                      name="playerName"
                       type="text"
-                      placeholder="Guest player"
+                      placeholder="Enter your name"
                       value={guestName}
                       onChange={(event) => setGuestName(event.target.value)}
-                      className="input input-bordered"
+                      className="input input-bordered w-full bg-base-100/50"
                       required
                       minLength={2}
                       maxLength={24}
                     />
-                  </label>
-
-                  <label className="form-control" htmlFor="room-code">
-                    <span className="label-text">Room code</span>
+                  </div>
+                  
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text text-base-content">Room code</span>
+                    </label>
                     <input
-                      id="room-code"
-                      name="roomCode"
                       type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{6}"
-                      placeholder="123456"
-                      className="input input-bordered uppercase"
+                      placeholder="6-digit code"
                       value={joinCode}
                       onChange={(event) => setJoinCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="input input-bordered w-full text-center text-2xl font-mono bg-base-100/50"
                       required
                       minLength={6}
                       maxLength={6}
                     />
-                  </label>
-                  <button type="submit" className="btn btn-secondary w-full" disabled={isJoining}>
-                    {isJoining ? "Joining…" : "Enter lobby"}
+                  </div>
+                  
+                  <button 
+                    type="submit" 
+                    className="btn btn-secondary w-full neon-glow"
+                    disabled={isJoining}
+                  >
+                    {isJoining ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm"></span>
+                        Joining...
+                      </>
+                    ) : (
+                      "🎮 JOIN GAME"
+                    )}
                   </button>
-                  {joinError ? (
-                    <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error" role="alert">
-                      {joinError}
-                    </p>
-                  ) : null}
+                  
+                  {joinError && (
+                    <div className="alert alert-error">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{joinError}</span>
+                    </div>
+                  )}
                 </form>
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </div>
 
-        <section id="features" className="mt-20 w-full">
-          <h2 className="text-3xl font-semibold text-base-content">Why film fans love Guess the Frame</h2>
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {featureHighlights.map((feature) => (
-              <article
-                key={feature.title}
-                className="card border border-base-300 bg-base-200 shadow-md"
-              >
-                <div className="card-body">
-                  <h3 className="card-title text-xl text-base-content">{feature.title}</h3>
-                  <p className="text-base text-base-content/70">{feature.description}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="roadmap" className="mt-20 w-full">
-          <div className="card border border-dashed border-primary bg-base-200/80">
-            <div className="card-body">
-              <h2 className="card-title text-2xl text-base-content">What we&apos;re building next</h2>
-              <ul className="mt-4 list-disc space-y-2 pl-6 text-base-content/70">
-                <li>Real-time room lobby with host controls, streaks, and reactions.</li>
-                <li>Creator studio for building frame packs and sharing with the community.</li>
-                <li>Progression system with season passes, achievements, and highlight reels.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="border-t border-base-300 bg-base-200">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-base-content/60 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Guess the Frame. Built for movie-night trivia fanatics.</p>
-          <div className="flex items-center gap-4">
-            <a className="link link-hover" href="#">Privacy</a>
-            <a className="link link-hover" href="#">Terms</a>
-            <a className="link link-hover" href="mailto:hello@guessframe.app">
-              Contact
-            </a>
-          </div>
+      {/* Footer */}
+      <footer className="footer footer-center p-4 bg-base-100/10 backdrop-blur-sm border-t border-primary/20">
+        <div>
+          <p className="font-bold text-lg movie-icon">© 2024 Guess the Frame</p>
+          <p className="text-sm text-base-content/60">Built for movie-night trivia fanatics</p>
         </div>
       </footer>
     </div>

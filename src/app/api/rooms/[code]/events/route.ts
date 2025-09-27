@@ -3,9 +3,9 @@ import { getRoom } from "@/lib/rooms";
 import { subscribeToRoom } from "@/lib/roomEvents";
 
 interface Params {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 function formatSse(event: string, data: unknown): string {

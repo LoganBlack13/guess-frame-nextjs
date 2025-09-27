@@ -10,9 +10,9 @@ import {
 import { HOST_SESSION_COOKIE } from "@/lib/session";
 
 interface Params {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 export async function GET(request: Request, { params }: Params) {

@@ -3,10 +3,10 @@ import { getGameStats, getGameTimeline } from '@/lib/database/games';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
-    const { gameId } = params;
+    const { gameId } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'json';
 

@@ -223,7 +223,7 @@ export function TMDBAdminClient() {
             <label className="block text-sm font-medium mb-2">Difficulté</label>
             <Select
               value={settings.difficulty}
-              onValueChange={(value: "easy" | "medium" | "hard") => 
+              onValueChange={(value: string) => 
                 setSettings(prev => ({ ...prev, difficulty: value }))
               }
               disabled={progress.isFetching}

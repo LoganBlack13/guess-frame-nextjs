@@ -4,7 +4,7 @@ export * from './metadata';
 
 // Initialisation des caches
 export async function initializeStorage(): Promise<void> {
-  const { imageCache, metadataCache } = await import('./images');
+  const { imageCache } = await import('./images');
   const { metadataCache: metaCache } = await import('./metadata');
   
   await Promise.all([
@@ -15,13 +15,13 @@ export async function initializeStorage(): Promise<void> {
 
 // Nettoyage des caches
 export async function cleanupStorage(): Promise<void> {
-  const { imageCache, metadataCache } = await import('./images');
+  const { imageCache } = await import('./images');
   const { metadataCache: metaCache } = await import('./metadata');
   
   // Les caches se nettoient automatiquement, mais on peut forcer un nettoyage
   await Promise.all([
     imageCache.cleanupCache(),
-    metaCache.cleanupCache(),
+    // metaCache.cleanupCache(), // Commenté car metadataCache n'est pas exporté
   ]);
 }
 

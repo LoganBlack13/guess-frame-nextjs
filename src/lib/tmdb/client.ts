@@ -208,6 +208,6 @@ export class TMDBClient {
       !movie.images.backdrop.includes('w342') && 
       !movie.images.backdrop.includes('w500');
     
-    return validStills.length > 0 || validBackdrop;
+    return validStills.length > 0 || !!validBackdrop;
   }
 }

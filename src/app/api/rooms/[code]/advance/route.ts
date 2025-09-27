@@ -4,9 +4,9 @@ import { advanceFrame } from "@/lib/rooms";
 import { HOST_SESSION_COOKIE } from "@/lib/session";
 
 interface Params {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 export async function POST(request: Request, { params }: Params) {

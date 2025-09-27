@@ -1,4 +1,5 @@
-import { getGameTimeline, getGameStats, GameTimeline, GameStats } from '../database';
+import { getGameTimeline, getGameStats } from '../database/games';
+import { GameTimeline, GameStats } from '../database/types';
 import { GameEventManager } from './events';
 
 export interface ReplayOptions {
@@ -52,7 +53,6 @@ export class GameReplay {
   constructor(timeline: GameTimeline, options: ReplayOptions = { speed: 1 }) {
     this.timeline = timeline;
     this.options = {
-      speed: 1,
       includeEvents: ['game_started', 'frame_started', 'guess_submitted', 'frame_advanced', 'game_completed'],
       excludeEvents: [],
       ...options,

@@ -24,6 +24,8 @@ export default function GameStats({ game }: GameStatsProps) {
         }
       } catch (error) {
         console.error('Failed to load stats:', error);
+        // Optionnel: afficher une erreur à l'utilisateur
+        // setError(error instanceof Error ? error.message : 'Failed to load stats');
       } finally {
         setLoading(false);
       }

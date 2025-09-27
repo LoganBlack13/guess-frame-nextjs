@@ -60,6 +60,7 @@ const ALLOWED_DURATIONS = new Set([5, 10, 15]);
 const QUIZ_GENERATOR_ID = "quiz-generator";
 const defaultRoomInclude = {
   players: true,
+  guesses: true,
   frames: {
     include: { guesses: true },
     orderBy: { order: "asc" as const },
@@ -72,6 +73,11 @@ const defaultRoomInclude = {
         },
         orderBy: {
           order: "asc" as const,
+        },
+      },
+      events: {
+        orderBy: {
+          timestamp: "asc" as const,
         },
       },
     },
@@ -97,12 +103,14 @@ function answersMatch(submitted: string, expected: string): boolean {
   const normalizedSubmitted = normalizeAnswerText(submitted);
   const normalizedExpected = normalizeAnswerText(expected);
   
-  console.log('🔍 Answer comparison:');
-  console.log('  Original submitted:', submitted);
-  console.log('  Original expected:', expected);
-  console.log('  Normalized submitted:', normalizedSubmitted);
-  console.log('  Normalized expected:', normalizedExpected);
-  console.log('  Match:', normalizedSubmitted === normalizedExpected);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 Answer comparison:');
+    console.log('  Original submitted:', submitted);
+    console.log('  Original expected:', expected);
+    console.log('  Normalized submitted:', normalizedSubmitted);
+    console.log('  Normalized expected:', normalizedExpected);
+    console.log('  Match:', normalizedSubmitted === normalizedExpected);
+  }
   
   return normalizedSubmitted === normalizedExpected;
 }
@@ -199,6 +207,7 @@ function toFrame(frame: PrismaFrame & { guesses?: PrismaGuess[] }): Frame {
 function toRoom(
   room: PrismaRoom & { 
     players: PrismaPlayer[]; 
+    guesses: PrismaGuess[];
     frames: (PrismaFrame & { guesses?: PrismaGuess[] })[]; 
     game?: {
       gameFrames: Array<{
@@ -211,18 +220,48 @@ function toRoom(
           title: string;
         };
       }>;
+      events: Array<{
+        id: string;
+        type: string;
+        data: string;
+        timestamp: Date;
+      }>;
     } | null;
   },
 ): Room {
   // All frames now come from GameFrames (database-generated quizzes)
   const frames = room.game?.gameFrames?.length 
     ? room.game.gameFrames.map((gameFrame, index) => {
-        console.log(`🎬 Creating frame ${index}:`, {
-          id: gameFrame.id,
-          movieTitle: gameFrame.movie.title,
-          imageUrl: gameFrame.imageUrl,
-          order: gameFrame.order
-        });
+        // Only log in development and when there are frames
+        if (process.env.NODE_ENV === 'development' && room.game?.gameFrames && room.game.gameFrames.length > 0) {
+          console.log(`🎬 Creating frame ${index}:`, {
+            id: gameFrame.id,
+            movieTitle: gameFrame.movie.title,
+            imageUrl: gameFrame.imageUrl,
+            order: gameFrame.order
+          });
+        }
+        
+        // Calculate solvedPlayerIds from GameEvents for this specific GameFrame
+        const solvedPlayerIds = room.game?.events
+          ?.filter((event: { type: string; data: string }) => {
+            if (event.type !== "guess_submitted") return false;
+            try {
+              const data = JSON.parse(event.data);
+              return data.frameIndex === index && data.isCorrect === true;
+            } catch {
+              return false;
+            }
+          })
+          ?.map((event: { data: string }) => {
+            try {
+              const data = JSON.parse(event.data);
+              return data.playerId;
+            } catch {
+              return null;
+            }
+          })
+          ?.filter(Boolean) || [];
         
         return {
           id: gameFrame.id,
@@ -231,13 +270,13 @@ function toRoom(
           addedBy: "tmdb-generator",
           order: gameFrame.order,
           createdAt: Date.now(),
-          solvedPlayerIds: [], // TODO: Get from guesses
+          solvedPlayerIds,
         };
       }).sort((a, b) => a.order - b.order)
     : []; // No fallback - all frames come from database
 
-  // Only log frames if there are any (avoid unnecessary logs on homepage)
-  if (frames.length > 0) {
+  // Only log frames if there are any and in development mode
+  if (process.env.NODE_ENV === 'development' && frames.length > 0) {
     console.log('📋 Final frames array:', frames.map((f, i) => ({ 
       arrayIndex: i, 
       order: f.order, 
@@ -890,19 +929,21 @@ export async function submitGuess(
     const gameFrames = (room.game as any)?.gameFrames || [];
     const currentFrame = gameFrames[currentFrameIndex];
     
-    console.log('🎯 GameFrames System Debug:');
-    console.log('  Has GameFrames:', hasGameFrames);
-    console.log('  Current frame index:', currentFrameIndex);
-    console.log('  Total GameFrames available:', gameFrames.length);
-    console.log('  Room currentFrameIndex from DB:', room.currentFrameIndex);
-    console.log('  Game ID:', (room.game as any)?.id);
-    console.log('  GameFrames count:', (room.game as any)?.gameFrames?.length);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 GameFrames System Debug:');
+      console.log('  Has GameFrames:', hasGameFrames);
+      console.log('  Current frame index:', currentFrameIndex);
+      console.log('  Total GameFrames available:', gameFrames.length);
+      console.log('  Room currentFrameIndex from DB:', room.currentFrameIndex);
+      console.log('  Game ID:', (room.game as any)?.id);
+      console.log('  GameFrames count:', (room.game as any)?.gameFrames?.length);
 
-    console.log('🎯 Frame Index Debug:');
-    console.log('  Current frame index:', currentFrameIndex);
-    console.log('  Total frames available:', gameFrames.length);
-    console.log('  All frames:', gameFrames.map((f: any, i: number) => ({ index: i, title: f.movie.title, id: f.id })));
-    console.log('  Frame at current index:', currentFrame ? { title: currentFrame.movie.title, id: currentFrame.id } : 'NO FRAME');
+      console.log('🎯 Frame Index Debug:');
+      console.log('  Current frame index:', currentFrameIndex);
+      console.log('  Total frames available:', gameFrames.length);
+      console.log('  All frames:', gameFrames.map((f: any, i: number) => ({ index: i, title: f.movie.title, id: f.id })));
+      console.log('  Frame at current index:', currentFrame ? { title: currentFrame.movie.title, id: currentFrame.id } : 'NO FRAME');
+    }
 
     if (!currentFrame) {
       throw new Error("Host needs to add more frames before continuing.");
@@ -929,14 +970,19 @@ export async function submitGuess(
     }
     
     // Compare with movie title
-    console.log('🎬 GameFrame Debug:');
-    console.log('  Expected movie title:', currentFrame.movie.title);
-    console.log('  User answer:', trimmedAnswer);
-    console.log('  Frame ID:', currentFrame.id);
-    console.log('  Frame order:', currentFrame.order);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎬 GameFrame Debug:');
+      console.log('  Expected movie title:', currentFrame.movie.title);
+      console.log('  User answer:', trimmedAnswer);
+      console.log('  Frame ID:', currentFrame.id);
+      console.log('  Frame order:', currentFrame.order);
+    }
     
     const isCorrect = answersMatch(trimmedAnswer, currentFrame.movie.title);
-    console.log('  Match result:', isCorrect);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('  Match result:', isCorrect);
+    }
 
     if (alreadySolved) {
       return {

@@ -9,7 +9,6 @@ export class GameEventManager {
         roomCode,
         playerCount,
         targetFrameCount,
-        timestamp: new Date().toISOString(),
       },
     });
   }
@@ -29,7 +28,6 @@ export class GameEventManager {
         frameId,
         movieTitle,
         timeLimit,
-        timestamp: new Date().toISOString(),
       },
     });
   }
@@ -53,7 +51,6 @@ export class GameEventManager {
         frameId,
         isCorrect,
         pointsAwarded,
-        timestamp: new Date().toISOString(),
       },
     });
   }
@@ -75,7 +72,6 @@ export class GameEventManager {
         correctAnswer,
         totalGuesses,
         correctGuesses,
-        timestamp: new Date().toISOString(),
       },
     });
   }
@@ -101,7 +97,6 @@ export class GameEventManager {
         correctGuesses,
         playerScores,
         duration,
-        timestamp: new Date().toISOString(),
       },
     });
   }

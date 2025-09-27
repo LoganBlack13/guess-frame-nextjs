@@ -4,10 +4,10 @@ import { getGameTimeline } from '@/lib/database/games';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
-    const { gameId } = params;
+    const { gameId } = await params;
     const { searchParams } = new URL(request.url);
     
     // Paramètres de replay
@@ -44,10 +44,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { gameId: string } }
+  { params }: { params: Promise<{ gameId: string }> }
 ) {
   try {
-    const { gameId } = params;
+    const { gameId } = await params;
     const body = await request.json();
     const { format = 'json' } = body;
 

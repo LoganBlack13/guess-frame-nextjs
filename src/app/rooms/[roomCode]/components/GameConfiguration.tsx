@@ -120,7 +120,7 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
             </label>
             <Select
               value={settings.difficulty}
-              onValueChange={(value: 'easy' | 'normal' | 'hard') => 
+              onValueChange={(value: string) => 
                 setSettings(prev => ({ ...prev, difficulty: value }))
               }
               disabled={isGenerating}

@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from "react";
 import type { GameDifficulty, Room, RoomStatus } from "@/lib/rooms";
+import PlayerList from "../components/PlayerList";
 
 interface PartyClientProps {
   initialRoom: Room;
@@ -34,6 +35,7 @@ export default function PartyClient({
   const [guessValue, setGuessValue] = useState("");
   const [guessFeedback, setGuessFeedback] = useState<string | null>(null);
   const [isSubmittingGuess, setIsSubmittingGuess] = useState(false);
+  const [hasAnsweredCorrectly, setHasAnsweredCorrectly] = useState(false);
 
   const [isAdvancingFrame, setIsAdvancingFrame] = useState(false);
 
@@ -94,6 +96,10 @@ export default function PartyClient({
   useEffect(() => {
     // Reset the auto-advance trigger only when the frame index changes, not when frameStartedAt changes
     autoAdvanceTriggeredRef.current = false;
+    // Reset the correct answer state when a new frame starts
+    setHasAnsweredCorrectly(false);
+    setGuessValue("");
+    setGuessFeedback(null);
   }, [room?.currentFrameIndex]);
 
   useEffect(() => {
@@ -228,7 +234,8 @@ export default function PartyClient({
       room?.status === "in-progress" &&
       !countdown.isPreRoll &&
       countdown.guess > 0 &&
-      !alreadySolvedByYou,
+      !alreadySolvedByYou &&
+      !hasAnsweredCorrectly,
   );
 
   const totalFrames = room?.targetFrameCount ?? 0;
@@ -430,7 +437,7 @@ export default function PartyClient({
           if (payload.outcome.alreadySolved) {
             setGuessFeedback("You already solved this frame.");
           } else {
-            setGuessFeedback("Correct! Nice work.");
+            setHasAnsweredCorrectly(true);
           }
           setGuessValue("");
         } else {
@@ -492,6 +499,12 @@ export default function PartyClient({
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-8">
+        {/* Players List - Moved to top */}
+        <PlayerList 
+          players={players} 
+          currentFrameSolvedPlayerIds={currentFrame?.solvedPlayerIds || []}
+        />
+
         {/* Game Status */}
         <div className="card bg-base-200 shadow-xl">
           <div className="card-body">
@@ -545,15 +558,17 @@ export default function PartyClient({
                 </form>
               )}
 
+              {hasAnsweredCorrectly && (
+                <div className="alert alert-success">
+                  <span>Great job! You've already answered this frame correctly. Wait for the next frame.</span>
+                </div>
+              )}
+
               {guessFeedback && (
                 <div className={`alert ${guessFeedback.includes("Correct") ? "alert-success" : "alert-warning"}`}>
                   <span>{guessFeedback}</span>
                 </div>
               )}
-
-              <div className="text-sm text-base-content/70">
-                {currentFrameSolvedCount} player{currentFrameSolvedCount !== 1 ? 's' : ''} solved this frame
-              </div>
             </div>
           </div>
         )}
@@ -608,23 +623,6 @@ export default function PartyClient({
           </div>
         )}
 
-        {/* Players List */}
-        <div className="card bg-base-200 shadow-xl">
-          <div className="card-body">
-            <h3 className="text-xl font-semibold mb-4">Players ({players.length})</h3>
-            <div className="space-y-2">
-              {sortedByScore.map((player) => (
-                <div key={player.id} className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold">{player.name}</span>
-                    <span className="badge badge-outline">{player.role}</span>
-                  </div>
-                  <span className="text-lg font-bold text-primary">{player.score}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
         {/* Error Messages */}
         {errorMessage && (

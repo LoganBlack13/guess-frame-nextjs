@@ -49,9 +49,9 @@ export class ImageCache {
       
       for (const [url, entry] of Object.entries(index)) {
         this.entries.set(url, {
-          ...entry,
-          downloadedAt: new Date(entry.downloadedAt),
-          lastAccessed: new Date(entry.lastAccessed),
+          ...(entry as any),
+          downloadedAt: new Date((entry as any).downloadedAt),
+          lastAccessed: new Date((entry as any).lastAccessed),
         });
       }
     } catch (error) {

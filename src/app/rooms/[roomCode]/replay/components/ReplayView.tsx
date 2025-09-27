@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Game } from '@/lib/database/types';
-import ReplayPlayer from './ReplayPlayer';
-import GameList from './GameList';
-import GameStats from './GameStats';
+import ReplayPlayer from '@/app/rooms/[roomCode]/replay/components/ReplayPlayer';
+import GameList from '@/app/rooms/[roomCode]/replay/components/GameList';
+import GameStats from '@/app/rooms/[roomCode]/replay/components/GameStats';
 
 interface ReplayViewProps {
   roomCode: string;
@@ -41,7 +41,8 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
       try {
         const response = await fetch(`/api/games/${selectedGame.id}/replay`);
         if (!response.ok) {
-          throw new Error('Failed to load replay data');
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText || 'Failed to load replay data'}`);
         }
 
         const result = await response.json();
@@ -51,7 +52,8 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
           throw new Error(result.error || 'Failed to load replay data');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error('Error loading replay data:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
       } finally {
         setLoading(false);
       }
@@ -92,6 +94,7 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
       document.body.removeChild(a);
     } catch (err) {
       console.error('Export failed:', err);
+      setError(err instanceof Error ? err.message : 'Export failed');
     }
   };
 

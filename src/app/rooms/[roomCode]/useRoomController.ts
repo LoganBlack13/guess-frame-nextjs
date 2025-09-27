@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from "react";
 import type { GameDifficulty, Room, RoomStatus } from "@/lib/rooms";
 
 export interface UseRoomControllerOptions {
@@ -39,8 +39,8 @@ export function useRoomController({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const [difficultyChoice, setDifficultyChoice] = useState<GameDifficulty>(initialRoom.difficulty);
-  const [durationChoice, setDurationChoice] = useState<number>(initialRoom.durationMinutes);
+  const [difficultyChoice, setDifficultyChoice] = useState<GameDifficulty>(initialRoom?.difficulty || 'normal');
+  const [durationChoice, setDurationChoice] = useState<number>(initialRoom?.durationMinutes || 10);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [settingsSavedAt, setSettingsSavedAt] = useState<number | null>(null);
@@ -117,11 +117,11 @@ export function useRoomController({
   }, [room?.currentFrameIndex]);
 
   useEffect(() => {
-    setDifficultyChoice(initialRoom.difficulty);
-    setDurationChoice(initialRoom.durationMinutes);
+    setDifficultyChoice(initialRoom?.difficulty || 'normal');
+    setDurationChoice(initialRoom?.durationMinutes || 10);
     setSettingsSavedAt(null);
     setSettingsError(null);
-  }, [initialRoom.difficulty, initialRoom.durationMinutes]);
+  }, [initialRoom?.difficulty, initialRoom?.durationMinutes]);
 
   useEffect(() => {
     if (!settingsSavedAt) return;
@@ -212,7 +212,7 @@ export function useRoomController({
   }, [room?.players]);
 
   const playersById = useMemo(() => {
-    return players.reduce<Map<string, Player>>((map, player) => {
+    return players.reduce<Map<string, any>>((map, player) => {
       map.set(player.id, player);
       return map;
     }, new Map());

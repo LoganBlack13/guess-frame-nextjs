@@ -8,9 +8,9 @@ import { updateRoomStatus } from "@/lib/rooms";
 import { prisma } from "@/lib/prisma";
 
 interface Params {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 interface StartGameSettings {
@@ -76,7 +76,7 @@ export async function POST(request: Request, { params }: Params) {
       await addGameFrames(
         game.id,
         quizResult.frames.map((frame, index) => ({
-          movieId: frame.movieId,
+          movieId: frame.movieId.toString(),
           imageUrl: frame.imageUrl,
           aspectRatio: frame.aspectRatio,
           isScene: frame.isScene,

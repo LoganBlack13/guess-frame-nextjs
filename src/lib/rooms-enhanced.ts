@@ -117,21 +117,21 @@ function toFrame(prismaFrame: PrismaFrame): Frame {
 }
 
 function toRoom(prismaRoom: PrismaRoom & typeof defaultRoomInclude): Room {
-  const frames = prismaRoom.frames.map(toFrame);
+  const frames = (prismaRoom.frames as any[]).map(toFrame);
   
   // Remplir les solvedPlayerIds pour chaque frame
-  frames.forEach(frame => {
-    const frameGuesses = prismaRoom.guesses.filter(guess => guess.frameId === frame.id);
+  frames.forEach((frame: any) => {
+    const frameGuesses = (prismaRoom.guesses as any[]).filter((guess: any) => guess.frameId === frame.id);
     frame.solvedPlayerIds = frameGuesses
-      .filter(guess => guess.isCorrect)
-      .map(guess => guess.playerId);
+      .filter((guess: any) => guess.isCorrect)
+      .map((guess: any) => guess.playerId);
   });
 
   return {
     code: prismaRoom.code,
     createdAt: prismaRoom.createdAt.getTime(),
     status: prismaRoom.status as RoomStatus,
-    players: prismaRoom.players.map(toPlayer),
+    players: (prismaRoom.players as any[]).map(toPlayer),
     frames,
     difficulty: prismaRoom.difficulty as GameDifficulty,
     durationMinutes: prismaRoom.durationMinutes,
@@ -140,7 +140,7 @@ function toRoom(prismaRoom: PrismaRoom & typeof defaultRoomInclude): Room {
     roundStartedAt: prismaRoom.roundStartedAt?.getTime() ?? null,
     frameStartedAt: prismaRoom.frameStartedAt?.getTime() ?? null,
     currentFrameIndex: prismaRoom.currentFrameIndex,
-    gameId: prismaRoom.game?.id,
+    gameId: (prismaRoom.game as any)?.id,
   };
 }
 
@@ -239,7 +239,7 @@ export async function createRoom(hostName: string, useTMDB: boolean = true): Pro
     return { refreshedRoom: refreshedRoomRecord, hostPlayer: hostPlayerRecord };
   });
 
-  const room = toRoom(refreshedRoom);
+  const room = toRoom(refreshedRoom as any);
   const host = toPlayer(hostPlayer);
 
   publishRoomUpdate(room);
@@ -342,7 +342,7 @@ export async function startRoomGame(roomCode: string, sessionToken?: string): Pr
     return refreshedRoom;
   });
 
-  const normalizedRoom = toRoom(result);
+  const normalizedRoom = toRoom(result as any);
   publishRoomUpdate(normalizedRoom);
 
   return normalizedRoom;
@@ -442,7 +442,7 @@ export async function advanceFrame(roomCode: string, sessionToken?: string): Pro
     return refreshedRoom;
   });
 
-  const normalizedRoom = toRoom(result);
+  const normalizedRoom = toRoom(result as any);
   publishRoomUpdate(normalizedRoom);
 
   return normalizedRoom;
@@ -456,5 +456,5 @@ export {
   updateRoomSettings,
   submitGuess,
   getRoom,
-  getRoomByCode,
+  // getRoomByCode, // Commenté car non exporté
 } from "./rooms";

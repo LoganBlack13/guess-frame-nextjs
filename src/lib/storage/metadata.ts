@@ -53,10 +53,10 @@ export class MetadataCache {
       
       for (const [tmdbId, entry] of Object.entries(index)) {
         this.entries.set(Number(tmdbId), {
-          ...entry,
-          data: entry.data,
-          cachedAt: new Date(entry.cachedAt),
-          lastAccessed: new Date(entry.lastAccessed),
+          ...(entry as any),
+          data: (entry as any).data,
+          cachedAt: new Date((entry as any).cachedAt),
+          lastAccessed: new Date((entry as any).lastAccessed),
         });
       }
     } catch (error) {

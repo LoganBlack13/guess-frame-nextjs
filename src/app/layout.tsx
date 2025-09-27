@@ -23,9 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="frame">
+    <html lang="en" data-theme="synthwave">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
+        <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
       </body>
     </html>
   );

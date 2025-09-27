@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { getRoomGames } from '@/lib/database/games';
-import ReplayView from './components/ReplayView';
+import { ReplayView } from './components';
 import LoadingSpinner from '@/app/rooms/[roomCode]/components/LoadingSpinner';
 
 interface ReplayPageProps {

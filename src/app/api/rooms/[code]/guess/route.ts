@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { submitGuess } from "@/lib/rooms";
 
 interface Params {
-  params: {
+  params: Promise<{
     code: string;
-  };
+  }>;
 }
 
 export async function POST(request: Request, { params }: Params) {

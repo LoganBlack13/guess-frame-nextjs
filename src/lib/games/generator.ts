@@ -102,7 +102,7 @@ export class QuizGenerator {
           : movie.backdropUrl || movie.posterUrl || '';
         
         return {
-          movieId: movie.id,
+          movieId: movie.id.toString(),
           imageUrl,
           aspectRatio: stills.length > 0 ? 16/9 : 1.5, // 16:9 pour les scènes, 1.5 pour les posters
           isScene: stills.length > 0, // true si c'est une scène, false si c'est un poster
@@ -313,7 +313,7 @@ export class QuizGenerator {
     console.log('🔍 fetchMoviesForQuiz called with:', { count, difficulty, genres, excludeGenres, yearRange, language });
     
     // Paramètres de recherche basés sur la difficulté
-    const searchParams = this.getSearchParamsForDifficulty(difficulty);
+    const searchParams: any = this.getSearchParamsForDifficulty(difficulty);
     console.log('🎯 Search params for difficulty:', searchParams);
     
     // Ajouter les filtres optionnels
@@ -482,8 +482,8 @@ export class QuizGenerator {
       runtime: movie.runtime,
       tagline: movie.tagline,
       languages: movie.languages,
-      posterUrl: movie.images.poster,
-      backdropUrl: movie.images.backdrop,
+      posterUrl: movie.images.poster || undefined,
+      backdropUrl: movie.images.backdrop || undefined,
       stillsUrls: movie.images.stills,
     });
   }
