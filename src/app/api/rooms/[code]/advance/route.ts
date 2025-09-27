@@ -11,12 +11,14 @@ interface Params {
 
 export async function POST(request: Request, { params }: Params) {
   try {
-    const code = params.code.trim();
+    const resolvedParams = await params;
+    const code = resolvedParams.code.trim();
     if (!code) {
       return NextResponse.json({ error: "Room code is required" }, { status: 400 });
     }
 
-    const sessionToken = cookies().get(HOST_SESSION_COOKIE)?.value;
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get(HOST_SESSION_COOKIE)?.value;
     const room = await advanceFrame(code, sessionToken);
 
     return NextResponse.json({ room });

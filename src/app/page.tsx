@@ -30,6 +30,7 @@ export default function Home() {
   const router = useRouter();
 
   const [hostName, setHostName] = useState("");
+  const [useTMDB, setUseTMDB] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, startCreate] = useTransition();
 
@@ -49,7 +50,7 @@ export default function Home() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ hostName }),
+          body: JSON.stringify({ hostName, useTMDB }),
         });
 
         if (!response.ok) {
@@ -173,6 +174,27 @@ export default function Home() {
                       maxLength={24}
                     />
                   </label>
+                  
+                  <div className="form-control">
+                    <label className="label cursor-pointer">
+                      <span className="label-text">🎬 Utiliser TMDB (films réels)</span>
+                      <input
+                        type="checkbox"
+                        className="toggle toggle-primary"
+                        checked={useTMDB}
+                        onChange={(event) => setUseTMDB(event.target.checked)}
+                      />
+                    </label>
+                    <div className="label">
+                      <span className="label-text-alt">
+                        {useTMDB 
+                          ? "Quiz généré avec des films réels de TMDB" 
+                          : "Quiz avec films prédéfinis (plus rapide)"
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  
                   <button type="submit" className="btn btn-primary" disabled={isCreating}>
                     {isCreating ? "Creating…" : "Launch lobby"}
                   </button>

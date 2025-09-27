@@ -98,17 +98,17 @@ export default function LobbyClient({
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
           <div className="card border border-primary bg-base-200 shadow-xl">
             <div className="card-body items-center text-center gap-4">
-              <h1 className="text-3xl font-semibold text-primary">La partie commence bientôt !</h1>
+              <h1 className="text-3xl font-semibold text-primary">The game starts soon!</h1>
               {partyCountdown !== null && partyCountdown > 0 ? (
                 <>
                   <div className="text-6xl font-bold text-primary">{partyCountdown}</div>
                   <p className="text-lg text-base-content/70">
-                    Redirection vers la partie dans {partyCountdown} seconde{partyCountdown > 1 ? 's' : ''}...
+                    Redirecting to the game in {partyCountdown} second{partyCountdown > 1 ? 's' : ''}...
                   </p>
                 </>
               ) : (
                 <p className="text-lg text-base-content/70">
-                  Redirection en cours...
+                  Redirecting...
                 </p>
               )}
             </div>

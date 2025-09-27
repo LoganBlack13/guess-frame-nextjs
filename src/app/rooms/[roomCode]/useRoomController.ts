@@ -49,6 +49,10 @@ export function useRoomController({
   const [guessFeedback, setGuessFeedback] = useState<string | null>(null);
   const [isSubmittingGuess, setIsSubmittingGuess] = useState(false);
 
+  // Nouvelle logique pour la génération de partie
+  const [isGeneratingGame, setIsGeneratingGame] = useState(false);
+  const [gameGenerationError, setGameGenerationError] = useState<string | null>(null);
+
   const [isAdvancingFrame, setIsAdvancingFrame] = useState(false);
 
   const [shareUrl, setShareUrl] = useState<string>("");
@@ -108,8 +112,9 @@ export function useRoomController({
   );
 
   useEffect(() => {
+    // Reset the auto-advance trigger only when the frame index changes, not when frameStartedAt changes
     autoAdvanceTriggeredRef.current = false;
-  }, [room?.frameStartedAt]);
+  }, [room?.currentFrameIndex]);
 
   useEffect(() => {
     setDifficultyChoice(initialRoom.difficulty);
@@ -130,12 +135,12 @@ export function useRoomController({
     }
   }, [roomCode]);
 
-  // Effet pour la redirection automatique vers la page party
+  // Effect for automatic redirection to the party page
   useEffect(() => {
     if (shouldRedirectToParty && typeof window !== "undefined") {
       const redirectTimer = setTimeout(() => {
         window.location.href = `/rooms/${roomCode}/party?playerId=${effectivePlayerId}&role=${hostSessionActive ? 'host' : 'guest'}`;
-      }, 100); // Petit délai pour s'assurer que l'état est mis à jour
+      }, 100); // Small delay to ensure state is updated
       
       return () => clearTimeout(redirectTimer);
     }
@@ -262,8 +267,8 @@ export function useRoomController({
 
   const currentFrameIndex = useMemo(() => {
     if (!room || !room.frames.length) return 0;
-    return Math.min(room.currentFrameIndex, room.frames.length - 1);
-  }, [room?.frames.length, room?.currentFrameIndex]);
+    return room.currentFrameIndex;
+  }, [room?.currentFrameIndex]);
 
   const currentFrame = room?.frames.length ? room.frames[currentFrameIndex] : null;
   const alreadySolvedByYou = Boolean(
@@ -435,7 +440,7 @@ export function useRoomController({
 
     autoAdvanceTriggeredRef.current = true;
     void handleAdvanceFrame();
-  }, [canManage, countdown.guess, countdown.isPreRoll, framesMissing, handleAdvanceFrame, room?.frameStartedAt, room?.status]);
+  }, [canManage, countdown.guess, countdown.isPreRoll, framesMissing, room?.status]);
 
   const handleGuessSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -497,6 +502,47 @@ export function useRoomController({
     void handleCopyCode();
   }, [handleCopyCode]);
 
+  // Fonction pour générer la partie
+  const handleStartGame = useCallback(async (settings: {
+    difficulty: 'easy' | 'normal' | 'hard';
+    durationMinutes: number;
+    genres?: string[];
+    yearRange?: { min: number; max: number };
+  }) => {
+    if (!hostSessionActive) {
+      setGameGenerationError('Seul l\'hôte peut démarrer la partie');
+      return;
+    }
+
+    setIsGeneratingGame(true);
+    setGameGenerationError(null);
+
+    try {
+      const response = await fetch(`/api/rooms/${roomCode}/start-game`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start game');
+      }
+
+      const result = await response.json();
+      console.log('Game started successfully:', result);
+      
+      // Rafraîchir la room pour voir les changements
+      await refreshRoom({ silent: false });
+      
+    } catch (error) {
+      console.error('Failed to start game:', error);
+      setGameGenerationError(error instanceof Error ? error.message : 'Erreur inconnue');
+    } finally {
+      setIsGeneratingGame(false);
+    }
+  }, [hostSessionActive, roomCode, refreshRoom]);
+
   return {
     room,
     roomMissing,
@@ -545,5 +591,9 @@ export function useRoomController({
     handleShareCopy,
     partyCountdown,
     shouldRedirectToParty,
+    // Nouvelles propriétés pour la génération de partie
+    handleStartGame,
+    isGeneratingGame,
+    gameGenerationError,
   };
 }

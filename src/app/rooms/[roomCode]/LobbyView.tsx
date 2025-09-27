@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Room } from "@/lib/rooms";
 import { useRoomController, UseRoomControllerOptions } from "./useRoomController";
+import GameConfiguration from "./components/GameConfiguration";
 
 interface LobbyViewProps extends UseRoomControllerOptions {
   initialRoom: Room;
@@ -37,6 +38,9 @@ export function LobbyView(props: LobbyViewProps) {
     hostSessionActive,
     partyCountdown,
     shouldRedirectToParty,
+    handleStartGame,
+    isGeneratingGame,
+    gameGenerationError,
   } = controller;
 
   if (roomMissing || !room) {
@@ -86,17 +90,17 @@ export function LobbyView(props: LobbyViewProps) {
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
           <div className="card border border-primary bg-base-200 shadow-xl">
             <div className="card-body items-center text-center gap-4">
-              <h1 className="text-3xl font-semibold text-primary">La partie commence bientôt !</h1>
+              <h1 className="text-3xl font-semibold text-primary">The game starts soon!</h1>
               {partyCountdown !== null && partyCountdown > 0 ? (
                 <>
                   <div className="text-6xl font-bold text-primary">{partyCountdown}</div>
                   <p className="text-lg text-base-content/70">
-                    Redirection vers la partie dans {partyCountdown} seconde{partyCountdown > 1 ? 's' : ''}...
+                    Redirecting to the game in {partyCountdown} second{partyCountdown > 1 ? 's' : ''}...
                   </p>
                 </>
               ) : (
                 <p className="text-lg text-base-content/70">
-                  Redirection en cours...
+                  Redirecting...
                 </p>
               )}
             </div>
@@ -199,76 +203,47 @@ export function LobbyView(props: LobbyViewProps) {
           </div>
         </section>
 
-        <section className="card border border-base-300 bg-base-200 shadow-md">
-          <div className="card-body gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-2xl text-base-content">Game setup</h2>
-              <span className="badge badge-outline">{room.targetFrameCount}&nbsp;frames</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-base-300 bg-base-100 p-4">
-                <p className="text-sm uppercase tracking-wide text-base-content/60">Difficulty</p>
-                <p className="text-lg font-semibold text-base-content">{room.difficulty.toUpperCase()}</p>
-                <p className="mt-1 text-sm text-base-content/60">
-                  Players get {room.guessWindowSeconds} seconds per frame to lock in their guess.
-                </p>
+        {/* Configuration de la partie - seulement si pas encore générée */}
+        {room.status === "lobby" && hostSessionActive ? (
+          <GameConfiguration 
+            onStartGame={handleStartGame}
+            isGenerating={isGeneratingGame}
+          />
+        ) : room.status === "lobby" ? (
+          <section className="card border border-base-300 bg-base-200 shadow-md">
+            <div className="card-body gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="card-title text-2xl text-base-content">Game setup</h2>
+                <span className="badge badge-outline">{room.targetFrameCount}&nbsp;frames</span>
               </div>
-              <div className="rounded-lg border border-base-300 bg-base-100 p-4">
-                <p className="text-sm uppercase tracking-wide text-base-content/60">Duration</p>
-                <p className="text-lg font-semibold text-base-content">{room.durationMinutes} minute party</p>
-                <p className="mt-1 text-sm text-base-content/60">
-                  Expect roughly {room.targetFrameCount} frames this round.
-                </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border border-base-300 bg-base-100 p-4">
+                  <p className="text-sm uppercase tracking-wide text-base-content/60">Difficulty</p>
+                  <p className="text-lg font-semibold text-base-content">{room.difficulty.toUpperCase()}</p>
+                  <p className="mt-1 text-sm text-base-content/60">
+                    Players get {room.guessWindowSeconds} seconds per frame to lock in their guess.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-base-300 bg-base-100 p-4">
+                  <p className="text-sm uppercase tracking-wide text-base-content/60">Duration</p>
+                  <p className="text-lg font-semibold text-base-content">{room.durationMinutes} minute party</p>
+                  <p className="mt-1 text-sm text-base-content/60">
+                    Expect roughly {room.targetFrameCount} frames this round.
+                  </p>
+                </div>
+              </div>
+              <div className="alert alert-info">
+                <span>⏳ En attente de l'hôte pour configurer la partie...</span>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        {hostSessionActive ? (
+        {/* Contrôles de l'hôte - seulement si la partie est générée */}
+        {room.status !== "lobby" && hostSessionActive ? (
           <section className="card border border-dashed border-primary bg-base-200/70 shadow-sm">
             <div className="card-body gap-4">
               <h2 className="card-title text-xl text-base-content">Host controls</h2>
-              <form className="grid gap-3 md:grid-cols-2" onSubmit={handleSaveSettings}>
-                <label className="form-control" htmlFor="difficulty">
-                  <span className="label-text">Difficulty</span>
-                  <select
-                    id="difficulty"
-                    className="select select-bordered"
-                    value={difficultyChoice}
-                    onChange={(event) => setDifficultyChoice(event.target.value as GameDifficulty)}
-                  >
-                    <option value="easy">Easy (30s per frame)</option>
-                    <option value="normal">Normal (20s per frame)</option>
-                    <option value="hard">Hard (10s per frame)</option>
-                  </select>
-                </label>
-                <label className="form-control" htmlFor="duration">
-                  <span className="label-text">Party duration</span>
-                  <select
-                    id="duration"
-                    className="select select-bordered"
-                    value={durationChoice}
-                    onChange={(event) => setDurationChoice(Number(event.target.value))}
-                  >
-                    <option value={5}>5 minutes</option>
-                    <option value={10}>10 minutes</option>
-                    <option value={15}>15 minutes</option>
-                  </select>
-                </label>
-                <button type="submit" className="btn btn-primary md:col-span-2" disabled={isSavingSettings}>
-                  {isSavingSettings ? "Saving…" : "Save game settings"}
-                </button>
-                {settingsError ? (
-                  <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error md:col-span-2" role="alert">
-                    {settingsError}
-                  </p>
-                ) : null}
-                {settingsSaved ? (
-                  <p className="rounded-md bg-success/10 px-3 py-2 text-sm text-success md:col-span-2" role="status">
-                    Game settings updated. Quiz stills have been regenerated.
-                  </p>
-                ) : null}
-              </form>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"

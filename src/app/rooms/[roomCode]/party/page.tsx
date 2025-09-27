@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRoom } from "@/lib/rooms";
-import LobbyClient from "@/app/rooms/[roomCode]/LobbyClient";
+import PartyClient from "./PartyClient";
 
 interface PartyPageProps {
   params: { roomCode: string };
@@ -25,7 +25,7 @@ export default async function PartyPage({ params, searchParams }: PartyPageProps
   const hostSessionActive = role === "host";
 
   return (
-    <LobbyClient
+    <PartyClient
       initialRoom={initialRoom}
       roomCode={params.roomCode}
       playerId={playerId}

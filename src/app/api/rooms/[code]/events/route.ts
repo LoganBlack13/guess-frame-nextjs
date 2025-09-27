@@ -13,7 +13,8 @@ function formatSse(event: string, data: unknown): string {
 }
 
 export async function GET(request: Request, { params }: Params) {
-  const roomCode = params.code.trim();
+  const resolvedParams = await params;
+  const roomCode = resolvedParams.code.trim();
 
   if (!roomCode) {
     return NextResponse.json({ error: "Room code required" }, { status: 400 });

@@ -32,11 +32,14 @@ A multiplayer movie-frame trivia experience built with Next.js. Hosts spin up pr
    npm install
    ```
 
-2. **Configure the database**
+2. **Configure the database and TMDB API**
    Create a `.env` file (if you do not already have one) and add:
    ```env
    DATABASE_URL="file:./prisma/dev.db"
+   TMDB_API_KEY="your_tmdb_api_key_here"
    ```
+   
+   **TMDB API Key**: Get your free API key from [The Movie Database](https://www.themoviedb.org/settings/api) to enable TMDB mode for dynamic movie frame generation.
 
 3. **Sync the Prisma schema**
    ```bash

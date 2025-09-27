@@ -14,6 +14,7 @@ model Room {
   players   Player[]
   frames    Frame[]
   guesses   Guess[]
+  game      Game?
   difficulty String   @default("normal")
   durationMinutes Int @default(10)
   guessWindowSeconds Int @default(20)
@@ -47,6 +48,7 @@ model Frame {
   roomCode  String
   room      Room     @relation(fields: [roomCode], references: [code], onDelete: Cascade)
   guesses   Guess[]
+  gameFrames GameFrame[]
 
   @@index([roomCode])
   @@unique([roomCode, order])
@@ -68,4 +70,82 @@ model Guess {
 
   @@index([roomCode, frameId])
   @@index([playerId, frameId])
+}
+
+// Nouveaux modèles pour la gestion des parties et films
+model Game {
+  id          String      @id @default(cuid())
+  roomCode    String      @unique
+  status      String      @default("generated") // "generated", "started", "completed"
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  
+  // Relations
+  room        Room        @relation(fields: [roomCode], references: [code], onDelete: Cascade)
+  events      GameEvent[]
+  gameFrames  GameFrame[]
+  
+  @@index([roomCode])
+  @@index([status])
+}
+
+model Movie {
+  id            String      @id @default(cuid())
+  tmdbId        Int         @unique
+  title         String
+  originalTitle String
+  overview      String?
+  releaseDate   DateTime?
+  genres        String      // JSON array des genres
+  runtime       Int?
+  tagline       String?
+  languages     String      // JSON array des langues
+  posterUrl     String?
+  backdropUrl   String?
+  stillsUrls    String      // JSON array des URLs des stills
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relations
+  gameFrames    GameFrame[]
+  
+  @@index([tmdbId])
+  @@index([title])
+}
+
+model GameFrame {
+  id        String   @id @default(cuid())
+  gameId    String
+  movieId   String
+  frameId   String?  // Référence vers Frame si généré depuis l'ancien système
+  imageUrl  String
+  aspectRatio Float
+  isScene   Boolean @default(true)
+  order     Int
+  createdAt DateTime @default(now())
+  
+  // Relations
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  movie     Movie    @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  frame     Frame?   @relation(fields: [frameId], references: [id], onDelete: SetNull)
+  
+  @@index([gameId])
+  @@index([movieId])
+  @@unique([gameId, order])
+}
+
+model GameEvent {
+  id        String   @id @default(cuid())
+  gameId    String
+  type      String   // "game_started", "frame_started", "guess_submitted", "frame_advanced", "game_completed"
+  data      String   // JSON des données de l'événement
+  timestamp DateTime @default(now())
+  
+  // Relations
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  @@index([gameId])
+  @@index([type])
+  @@index([timestamp])
 }

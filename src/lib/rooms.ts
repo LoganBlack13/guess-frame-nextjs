@@ -9,6 +9,7 @@ import type {
 import { MOVIE_FRAMES } from "@/data/movieFrames";
 import { prisma } from "./prisma";
 import { publishRoomUpdate, publishPartyRedirect, publishPartyCountdown } from "./roomEvents";
+import type { MovieFrame } from './tmdb/types';
 
 export type PlayerRole = "host" | "guest";
 export type RoomStatus = "lobby" | "in-progress" | "completed";
@@ -113,6 +114,38 @@ function normalizeAnswerText(value: string): string {
 
 function answersMatch(submitted: string, expected: string): boolean {
   return normalizeAnswerText(submitted) === normalizeAnswerText(expected);
+}
+
+// Synchronise les frames TMDB avec les frames de la room
+async function syncTMDBFramesToRoom(
+  tx: Prisma.TransactionClient,
+  roomCode: string,
+  tmdbFrames: (MovieFrame & { title?: string })[],
+  hostPlayerId: string | null,
+): Promise<void> {
+  // Supprimer les anciennes frames
+  await tx.frame.deleteMany({ where: { roomCode } });
+  
+  if (tmdbFrames.length === 0) {
+    return;
+  }
+
+  const now = new Date();
+  
+  // Créer les frames de la room à partir des frames TMDB
+  await tx.frame.createMany({
+    data: tmdbFrames.map((frame, index) => ({
+      id: randomUUID(),
+      roomCode,
+      url: frame.imageUrl,
+      answer: frame.title || `Movie ${frame.movieId}`,
+      addedBy: hostPlayerId ?? QUIZ_GENERATOR_ID,
+      order: index + 1,
+      createdAt: now,
+    })),
+  });
+  
+  console.log(`✅ Created ${tmdbFrames.length} TMDB frames in room ${roomCode}`);
 }
 
 const PRE_ROLL_SECONDS = 5;
@@ -242,7 +275,7 @@ async function generateRoomCode(): Promise<string> {
   }
 }
 
-export async function createRoom(hostName: string): Promise<CreateRoomResult> {
+export async function createRoom(hostName: string, useTMDB: boolean = false): Promise<CreateRoomResult> {
   const trimmedName = hostName.trim();
   if (!trimmedName) {
     throw new Error("Host name is required");
@@ -282,7 +315,59 @@ export async function createRoom(hostName: string): Promise<CreateRoomResult> {
 
     const hostPlayerRecord = createdRoom.players.find((player) => player.id === hostId) ?? null;
 
-    await regenerateRoomFrames(tx, createdRoom.code, hostPlayerRecord?.id ?? null, gameSettings.targetFrameCount);
+    // Générer les frames selon le mode choisi
+    if (useTMDB) {
+      console.log('🎬 TMDB mode activated for room:', createdRoom.code);
+      console.log('🔑 TMDB API Key available:', !!process.env.TMDB_API_KEY);
+      
+      // Générer un quiz avec TMDB
+      try {
+        const { QuizGenerator } = await import('./games');
+        const { createGame } = await import('./database');
+        
+        const apiKey = process.env.TMDB_API_KEY || '';
+        if (!apiKey) {
+          throw new Error('TMDB_API_KEY environment variable is not set');
+        }
+        
+        console.log('🚀 Creating TMDB QuizGenerator...');
+        const quizGenerator = new QuizGenerator(apiKey);
+        
+        console.log('🎯 Generating TMDB quiz...');
+        const quizResult = await quizGenerator.generateQuickQuiz(
+          createdRoom.code, 
+          gameSettings.targetFrameCount
+        );
+        
+        console.log('✅ TMDB quiz generated:', {
+          gameId: quizResult.gameId,
+          totalFrames: quizResult.totalFrames,
+          totalMovies: quizResult.totalMovies
+        });
+        
+        // Synchroniser les GameFrames TMDB avec les Frames de la room
+        console.log('🔄 Syncing TMDB frames to room...');
+        await syncTMDBFramesToRoom(tx, createdRoom.code, quizResult.frames, hostPlayerRecord?.id ?? null);
+        
+        // Stocker les données pour après la transaction
+        global.tmdbQuizData = {
+          frames: quizResult.frames,
+          movies: quizResult.movies,
+          gameId: quizResult.gameId
+        };
+        
+        console.log('✅ TMDB room setup completed');
+      } catch (error) {
+        console.error('❌ TMDB generation failed:', error);
+        console.warn('🔄 Falling back to static frames...');
+        // Fallback vers l'ancien système
+        await regenerateRoomFrames(tx, createdRoom.code, hostPlayerRecord?.id ?? null, gameSettings.targetFrameCount);
+      }
+    } else {
+      console.log('📚 Using static frames mode for room:', createdRoom.code);
+      // Utiliser l'ancien système avec les frames statiques
+      await regenerateRoomFrames(tx, createdRoom.code, hostPlayerRecord?.id ?? null, gameSettings.targetFrameCount);
+    }
 
     const refreshedRoomRecord = await tx.room.findUnique({
       where: { code: createdRoom.code },
@@ -295,6 +380,54 @@ export async function createRoom(hostName: string): Promise<CreateRoomResult> {
 
     return { refreshedRoom: refreshedRoomRecord, hostPlayer: hostPlayerRecord };
   });
+
+  // Créer la partie associée APRÈS la transaction pour éviter les contraintes de clés étrangères
+  if (useTMDB) {
+    try {
+      console.log('🎮 Creating game record after transaction...');
+      const { createGame } = await import('./database');
+      const game = await createGame(refreshedRoom.code);
+      
+      // Sauvegarder les films en base APRÈS la transaction pour éviter les timeouts
+      console.log('💾 Saving movies to database in batches (after transaction)...');
+      const { QuizGenerator } = await import('./games');
+      const quizGenerator = new QuizGenerator(process.env.TMDB_API_KEY || '');
+      const savedMovies = await quizGenerator.saveMoviesInBatches(global.tmdbQuizData.movies);
+      
+      // Créer les GameFrames avec les films sauvegardés
+      if (savedMovies.length > 0) {
+        console.log('🎬 Creating GameFrames with saved movies...');
+        const { addGameFrames } = await import('./database');
+        await addGameFrames(
+          game.id,
+          global.tmdbQuizData.frames.map((frame, index) => ({
+            movieId: savedMovies.find(m => m.tmdbId === frame.movieId)?.id || '',
+            imageUrl: frame.imageUrl,
+            aspectRatio: frame.aspectRatio,
+            isScene: frame.isScene,
+            order: index,
+          }))
+        );
+      }
+      
+      // Nettoyer les données temporaires
+      delete global.tmdbQuizData;
+      
+      // Enregistrer l'événement de génération
+      const { GameEventManager } = await import('./games');
+      await GameEventManager.recordGameStarted(
+        game.id,
+        refreshedRoom.code,
+        1, // Seulement l'hôte pour l'instant
+        gameSettings.targetFrameCount
+      );
+      
+      console.log('✅ Game record created:', game.id);
+    } catch (error) {
+      console.warn('⚠️ Failed to create game record:', error);
+      // Ce n'est pas critique pour le fonctionnement du jeu
+    }
+  }
 
   const room = toRoom(refreshedRoom);
   const host = toPlayer(hostPlayer);
@@ -504,12 +637,12 @@ export async function updateRoomStatus(
   const normalizedRoom = toRoom(result);
   publishRoomUpdate(normalizedRoom);
   
-  // Si on démarre la partie, déclencher la redirection et le countdown
+  // If we start the game, trigger the redirection and countdown
   if (normalizedStatus === "in-progress") {
-    // Publier l'événement de redirection immédiatement
+    // Publish the redirection event immediately
     publishPartyRedirect(normalizedRoom);
     
-    // Démarrer le countdown de 5 secondes
+    // Start the 5 second countdown
     let countdown = 5;
     publishPartyCountdown(normalizedRoom, countdown);
     
@@ -519,7 +652,7 @@ export async function updateRoomStatus(
         publishPartyCountdown(normalizedRoom, countdown);
       } else {
         clearInterval(countdownInterval);
-        // La partie commence maintenant - le frameStartedAt est déjà configuré
+        // The game starts now - frameStartedAt is already configured
         publishRoomUpdate(normalizedRoom);
       }
     }, 1000);
@@ -752,7 +885,7 @@ export async function advanceFrame(
     }
 
     const effectiveTarget = Math.max(1, Math.min(room.targetFrameCount, totalFrames));
-    const currentIndex = Math.min(room.currentFrameIndex, totalFrames - 1);
+    const currentIndex = room.currentFrameIndex;
     const nextIndex = currentIndex + 1;
     const now = new Date();
     const updateData: Prisma.RoomUpdateInput = {};
@@ -841,7 +974,7 @@ export async function submitGuess(
       throw new Error("Host hasn't added any frames yet.");
     }
 
-    const currentFrameIndex = Math.min(room.currentFrameIndex, room.frames.length - 1);
+    const currentFrameIndex = room.currentFrameIndex;
     const currentFrame = room.frames[currentFrameIndex];
 
     if (!currentFrame) {

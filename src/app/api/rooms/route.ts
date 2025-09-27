@@ -6,6 +6,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const hostName = typeof body?.hostName === "string" ? body.hostName : "";
+    const useTMDB = typeof body?.useTMDB === "boolean" ? body.useTMDB : false;
 
     if (!hostName.trim()) {
       return NextResponse.json(
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { room, host, sessionToken } = await createRoom(hostName);
+    const { room, host, sessionToken } = await createRoom(hostName, useTMDB);
 
     const response = NextResponse.json({ room, player: host });
     response.cookies.set(createHostSessionCookie(sessionToken));

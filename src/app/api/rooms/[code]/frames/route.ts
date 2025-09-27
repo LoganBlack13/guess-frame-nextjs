@@ -11,7 +11,8 @@ interface Params {
 
 export async function POST(request: Request, { params }: Params) {
   try {
-    const code = params.code.trim();
+    const resolvedParams = await params;
+    const code = resolvedParams.code.trim();
     if (!code) {
       return NextResponse.json({ error: "Room code is required" }, { status: 400 });
     }
@@ -19,7 +20,8 @@ export async function POST(request: Request, { params }: Params) {
     const body = await request.json();
     const url = typeof body?.url === "string" ? body.url : "";
     const answer = typeof body?.answer === "string" ? body.answer : "";
-    const sessionToken = cookies().get(HOST_SESSION_COOKIE)?.value;
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get(HOST_SESSION_COOKIE)?.value;
 
     const frame = await addFrame(code, url, answer, sessionToken);
 
