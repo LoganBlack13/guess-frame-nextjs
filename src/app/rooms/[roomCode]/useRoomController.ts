@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GameDifficulty, Room, RoomStatus } from "@/lib/rooms";
 
 export interface UseRoomControllerOptions {
-  initialRoom: Room;
+  initialRoom: Room | null;
   roomCode: string;
   playerId?: string | null;
   hostSessionActive?: boolean;
@@ -30,7 +30,7 @@ export function useRoomController({
   playerId,
   hostSessionActive,
 }: UseRoomControllerOptions) {
-  const [room, setRoom] = useState<Room>(initialRoom);
+  const [room, setRoom] = useState<Room | null>(initialRoom || null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [roomMissing, setRoomMissing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -53,6 +53,8 @@ export function useRoomController({
 
   const [shareUrl, setShareUrl] = useState<string>("");
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [partyCountdown, setPartyCountdown] = useState<number | null>(null);
+  const [shouldRedirectToParty, setShouldRedirectToParty] = useState(false);
 
   const autoAdvanceTriggeredRef = useRef(false);
 
@@ -107,7 +109,7 @@ export function useRoomController({
 
   useEffect(() => {
     autoAdvanceTriggeredRef.current = false;
-  }, [room.frameStartedAt]);
+  }, [room?.frameStartedAt]);
 
   useEffect(() => {
     setDifficultyChoice(initialRoom.difficulty);
@@ -127,6 +129,17 @@ export function useRoomController({
       setShareUrl(`${window.location.origin}/rooms/${roomCode}`);
     }
   }, [roomCode]);
+
+  // Effet pour la redirection automatique vers la page party
+  useEffect(() => {
+    if (shouldRedirectToParty && typeof window !== "undefined") {
+      const redirectTimer = setTimeout(() => {
+        window.location.href = `/rooms/${roomCode}/party?playerId=${effectivePlayerId}&role=${hostSessionActive ? 'host' : 'guest'}`;
+      }, 100); // Petit délai pour s'assurer que l'état est mis à jour
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [shouldRedirectToParty, roomCode, effectivePlayerId, hostSessionActive]);
 
   useEffect(() => {
     if (typeof window === "undefined" || roomMissing) {
@@ -148,7 +161,31 @@ export function useRoomController({
       }
     };
 
+    const handlePartyRedirect: EventListener = (event) => {
+      const message = event as MessageEvent<string>;
+      try {
+        const data = JSON.parse(message.data) as Room;
+        setRoom(data);
+        setShouldRedirectToParty(true);
+      } catch (error) {
+        console.error("Failed to parse party redirect", error);
+      }
+    };
+
+    const handlePartyCountdown: EventListener = (event) => {
+      const message = event as MessageEvent<string>;
+      try {
+        const data = JSON.parse(message.data) as { room: Room; countdown: number };
+        setRoom(data.room);
+        setPartyCountdown(data.countdown);
+      } catch (error) {
+        console.error("Failed to parse party countdown", error);
+      }
+    };
+
     source.addEventListener("room:update", handleUpdate);
+    source.addEventListener("party:redirect", handlePartyRedirect);
+    source.addEventListener("party:countdown", handlePartyCountdown);
     source.onopen = () => {
       setEventsConnected(true);
     };
@@ -159,13 +196,15 @@ export function useRoomController({
 
     return () => {
       source.removeEventListener("room:update", handleUpdate);
+      source.removeEventListener("party:redirect", handlePartyRedirect);
+      source.removeEventListener("party:countdown", handlePartyCountdown);
       source.close();
     };
   }, [roomCode, roomMissing]);
 
   const players = useMemo(() => {
-    return [...room.players].sort((a, b) => a.joinedAt - b.joinedAt);
-  }, [room.players]);
+    return room ? [...room.players].sort((a, b) => a.joinedAt - b.joinedAt) : [];
+  }, [room?.players]);
 
   const playersById = useMemo(() => {
     return players.reduce<Map<string, Player>>((map, player) => {
@@ -181,16 +220,16 @@ export function useRoomController({
     });
   }, [players]);
 
-  const frameQueue = useMemo(() => [...room.frames], [room.frames]);
-  const framesMissing = Math.max(0, room.targetFrameCount - frameQueue.length);
+  const frameQueue = useMemo(() => room ? [...room.frames] : [], [room?.frames]);
+  const framesMissing = room ? Math.max(0, room.targetFrameCount - frameQueue.length) : 0;
 
-  const frameStartTimestamp = room.frameStartedAt ?? null;
+  const frameStartTimestamp = room?.frameStartedAt ?? null;
   const computeCountdown = useCallback((): CountdownState => {
-    if (room.status !== "in-progress" || !frameStartTimestamp) {
+    if (!room || room.status !== "in-progress" || !frameStartTimestamp) {
       return {
         preRoll: 0,
-        guess: room.guessWindowSeconds,
-        timerDisplay: formatSecondsDisplay(room.guessWindowSeconds),
+        guess: room?.guessWindowSeconds ?? 20,
+        timerDisplay: formatSecondsDisplay(room?.guessWindowSeconds ?? 20),
         isPreRoll: false,
       };
     }
@@ -203,7 +242,7 @@ export function useRoomController({
     const timerDisplay = formatSecondsDisplay(isPreRoll ? preRoll : guess);
 
     return { preRoll, guess, timerDisplay, isPreRoll };
-  }, [frameStartTimestamp, room.guessWindowSeconds, room.status]);
+  }, [frameStartTimestamp, room?.guessWindowSeconds, room?.status]);
 
   const [countdown, setCountdown] = useState<CountdownState>(() => computeCountdown());
 
@@ -212,46 +251,46 @@ export function useRoomController({
   }, [computeCountdown]);
 
   useEffect(() => {
-    if (room.status !== "in-progress" || !frameStartTimestamp) {
+    if (!room || room.status !== "in-progress" || !frameStartTimestamp) {
       return;
     }
     const interval = window.setInterval(() => {
       setCountdown(computeCountdown());
     }, 250);
     return () => window.clearInterval(interval);
-  }, [computeCountdown, frameStartTimestamp, room.status]);
+  }, [computeCountdown, frameStartTimestamp, room?.status]);
 
   const currentFrameIndex = useMemo(() => {
-    if (!room.frames.length) return 0;
+    if (!room || !room.frames.length) return 0;
     return Math.min(room.currentFrameIndex, room.frames.length - 1);
-  }, [room.frames.length, room.currentFrameIndex]);
+  }, [room?.frames.length, room?.currentFrameIndex]);
 
-  const currentFrame = room.frames.length ? room.frames[currentFrameIndex] : null;
+  const currentFrame = room?.frames.length ? room.frames[currentFrameIndex] : null;
   const alreadySolvedByYou = Boolean(
     currentFrame && effectivePlayerId && currentFrame.solvedPlayerIds.includes(effectivePlayerId),
   );
 
   const canGuess = Boolean(
     effectivePlayerId &&
-      room.status === "in-progress" &&
+      room?.status === "in-progress" &&
       !countdown.isPreRoll &&
       countdown.guess > 0 &&
       !alreadySolvedByYou,
   );
 
-  const totalFrames = room.targetFrameCount;
+  const totalFrames = room?.targetFrameCount ?? 0;
   const currentFrameDisplay =
-    room.status === "in-progress" || room.status === "completed"
-      ? Math.min(totalFrames, room.currentFrameIndex + 1)
+    room?.status === "in-progress" || room?.status === "completed"
+      ? Math.min(totalFrames, (room?.currentFrameIndex ?? 0) + 1)
       : 0;
 
   const isFinalFrameActive =
-    room.status === "in-progress" && room.currentFrameIndex >= Math.max(0, room.targetFrameCount - 1);
-  const nextFrameNumber = Math.min(totalFrames, room.currentFrameIndex + 2);
+    room?.status === "in-progress" && (room?.currentFrameIndex ?? 0) >= Math.max(0, (room?.targetFrameCount ?? 0) - 1);
+  const nextFrameNumber = Math.min(totalFrames, (room?.currentFrameIndex ?? 0) + 2);
 
   const handleCopyCode = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(room.code);
+      await navigator.clipboard.writeText(room?.code ?? "");
       setCopyState("copied");
       setTimeout(() => setCopyState("idle"), 2500);
     } catch (error) {
@@ -259,7 +298,7 @@ export function useRoomController({
       setCopyState("error");
       setTimeout(() => setCopyState("idle"), 2500);
     }
-  }, [room.code]);
+  }, [room?.code]);
 
   const mutateStatus = useCallback(
     async (nextStatus: RoomStatus) => {
@@ -388,15 +427,15 @@ export function useRoomController({
   useEffect(() => {
     if (!canManage) return;
     if (framesMissing > 0) return;
-    if (room.status !== "in-progress") return;
-    if (!room.frameStartedAt) return;
+    if (room?.status !== "in-progress") return;
+    if (!room?.frameStartedAt) return;
     if (countdown.isPreRoll) return;
     if (countdown.guess > 0) return;
     if (autoAdvanceTriggeredRef.current) return;
 
     autoAdvanceTriggeredRef.current = true;
     void handleAdvanceFrame();
-  }, [canManage, countdown.guess, countdown.isPreRoll, framesMissing, handleAdvanceFrame, room.frameStartedAt, room.status]);
+  }, [canManage, countdown.guess, countdown.isPreRoll, framesMissing, handleAdvanceFrame, room?.frameStartedAt, room?.status]);
 
   const handleGuessSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -504,5 +543,7 @@ export function useRoomController({
     copyState,
     shareUrl,
     handleShareCopy,
+    partyCountdown,
+    shouldRedirectToParty,
   };
 }

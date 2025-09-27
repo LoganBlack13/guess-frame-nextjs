@@ -2,8 +2,9 @@ import { EventEmitter } from "events";
 import type { Room } from "@/lib/rooms";
 
 export type RoomEvent = {
-  type: "room:update";
+  type: "room:update" | "party:redirect" | "party:countdown";
   room: Room;
+  countdown?: number;
 };
 
 const emitter = new EventEmitter();
@@ -17,6 +18,21 @@ export function publishRoomUpdate(room: Room) {
   emitter.emit(eventKey(room.code), {
     type: "room:update",
     room,
+  } satisfies RoomEvent);
+}
+
+export function publishPartyRedirect(room: Room) {
+  emitter.emit(eventKey(room.code), {
+    type: "party:redirect",
+    room,
+  } satisfies RoomEvent);
+}
+
+export function publishPartyCountdown(room: Room, countdown: number) {
+  emitter.emit(eventKey(room.code), {
+    type: "party:countdown",
+    room,
+    countdown,
   } satisfies RoomEvent);
 }
 

@@ -35,9 +35,11 @@ export function LobbyView(props: LobbyViewProps) {
     statusError,
     setStatusError,
     hostSessionActive,
+    partyCountdown,
+    shouldRedirectToParty,
   } = controller;
 
-  if (roomMissing) {
+  if (roomMissing || !room) {
     return (
       <div className="flex min-h-screen flex-col bg-base-100">
         <header className="border-b border-base-300 bg-base-100">
@@ -69,6 +71,40 @@ export function LobbyView(props: LobbyViewProps) {
 
   const shareBadge = eventsConnected ? "badge-success" : "badge-warning";
   const settingsSaved = Boolean(settingsSavedAt);
+
+  // Affichage du countdown et de la redirection
+  if (shouldRedirectToParty || partyCountdown !== null) {
+    return (
+      <div className="flex min-h-screen flex-col bg-base-100">
+        <header className="border-b border-base-300 bg-base-100">
+          <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
+            <Link href="/" className="text-lg font-semibold text-primary">
+              Guess the Frame
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
+          <div className="card border border-primary bg-base-200 shadow-xl">
+            <div className="card-body items-center text-center gap-4">
+              <h1 className="text-3xl font-semibold text-primary">La partie commence bientôt !</h1>
+              {partyCountdown !== null && partyCountdown > 0 ? (
+                <>
+                  <div className="text-6xl font-bold text-primary">{partyCountdown}</div>
+                  <p className="text-lg text-base-content/70">
+                    Redirection vers la partie dans {partyCountdown} seconde{partyCountdown > 1 ? 's' : ''}...
+                  </p>
+                </>
+              ) : (
+                <p className="text-lg text-base-content/70">
+                  Redirection en cours...
+                </p>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-base-100">
@@ -144,7 +180,7 @@ export function LobbyView(props: LobbyViewProps) {
                       {player.role === "host" ? (
                         <span className="badge badge-primary badge-sm">Host</span>
                       ) : null}
-                      {player.id === playerId ? (
+                      {player.id === props.playerId ? (
                         <span className="badge badge-outline badge-sm">You</span>
                       ) : null}
                     </div>

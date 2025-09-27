@@ -1,0 +1,27 @@
+---
+description: TypeScript standards for this repo.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# TypeScript Standards
+
+## Compiler & Types
+- Assume `strict: true`; **no `any`** unless commented with clear rationale.
+- Prefer `type` aliases for objects; use `interface` for public extension points.
+- Use union string literals instead of `enum` unless interop requires it.
+- Narrow at boundaries (API, env, forms) with **Zod**; export inferred types.
+
+## API Shapes & Props
+- Keep component props minimal; document with JSDoc. Favor required over optional.
+- Avoid prop explosions—compose with `children` or slots.
+
+## Patterns
+- Pure functions/components; avoid side-effects in render.
+- Prefer `const` and immutability; stable IDs/keys; avoid overusing `useEffect`.
+
+## Imports/Exports
+- Keep module surface small; export the minimum.
+- Use path aliases (`@/*`) consistently.

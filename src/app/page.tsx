@@ -68,7 +68,7 @@ export default function Home() {
         }
 
         setHostName("");
-        router.push(`/rooms/${roomCode}?playerId=${playerId}&role=host`);
+        router.push(`/rooms/${roomCode}/lobby?playerId=${playerId}&role=host`);
       } catch (error) {
         console.error("Failed to create room", error);
         setCreateError("Network hiccup. Give it another go.");
@@ -107,7 +107,7 @@ export default function Home() {
 
         setJoinCode("");
         setGuestName("");
-        router.push(`/rooms/${roomCode}?playerId=${playerId}&role=guest`);
+        router.push(`/rooms/${roomCode}/lobby?playerId=${playerId}&role=guest`);
       } catch (error) {
         console.error("Failed to join room", error);
         setJoinError("Network hiccup. Try again in a moment.");

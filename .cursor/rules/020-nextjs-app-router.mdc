@@ -1,0 +1,32 @@
+---
+description: Next.js App Router conventions (server-first, routing, data fetching, errors).
+globs:
+  - "src/app/**/*.ts"
+  - "src/app/**/*.tsx"
+  - "src/middleware.ts"
+alwaysApply: false
+---
+
+# Next.js (App Router) Conventions
+
+## Server vs Client
+- **Default to Server Components.** Add `"use client"` only when DOM APIs, event handlers, or stateful UI is required.
+- Keep data fetching on the server; pass serialized data to client components via props.
+
+## Routing & Layout
+- Use segment layouts (`layout.tsx`) for shared UI and metadata.
+- Group routes with `(group)` for organization; co-locate non-reusable components within the route.
+
+## Data Fetching & Caching
+- Use `await fetch(...)` in server components/route handlers; set `{ cache: 'force-cache' | 'no-store' }` or `{ next: { revalidate: N } }` explicitly.
+- Invalidate via tags or path revalidation when mutating.
+
+## Errors/Not Found
+- Provide `error.tsx` and `not-found.tsx` where appropriate.
+- Fail fast with typed errors; never expose secrets in error messages.
+
+## Images & Assets
+- Use `next/image`. Provide accurate `alt` and `sizes`.
+
+## Edge vs Node
+- Mark runtime when needed: `export const runtime = 'edge' | 'nodejs'`.

@@ -1,0 +1,23 @@
+---
+description: Testing, linting, formatting and CI expectations.
+globs:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "vitest.config.*"
+  - "jest.config.*"
+  - "playwright.config.*"
+alwaysApply: false
+---
+
+# Quality Gates
+
+## Tests
+- Unit tests: Vitest/Jest + RTL for components. Focus on critical logic and accessibility (roles, names, keyboard).
+- E2E: Playwright for key flows. Keep tests deterministic.
+
+## Static Checks
+- ESLint (`next/core-web-vitals`, `@typescript-eslint`, `jsx-a11y`, `tailwindcss`, import/order) must pass.
+- Prettier with Tailwind plugin for class sorting.
+
+## CI
+- Run type-check, lint, tests on PR. Block merges on failures.

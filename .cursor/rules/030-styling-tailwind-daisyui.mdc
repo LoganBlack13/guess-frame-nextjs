@@ -1,0 +1,30 @@
+---
+description: Tailwind + daisyUI usage rules and theming guidance.
+globs:
+  - "**/*.tsx"
+  - "src/styles/**/*.css"
+  - "src/app/globals.css"
+  - "tailwind.config.ts"
+alwaysApply: false
+---
+
+# Styling: Tailwind + daisyUI
+
+## General
+- Prefer Tailwind utilities + **daisyUI** components for consistency.
+- Extract repeated patterns into small presentational components under `src/components/ui`.
+- Avoid inline style objects; prefer utilities.
+
+## Class Composition
+- Use a `cn` helper (`clsx` + `tailwind-merge`) to merge classes; avoid duplicate/conflicting utilities.
+
+## Theming
+- Manage themes via daisyUI in `tailwind.config.ts`. Keep custom tokens minimal and centralized.
+- Support dark mode; ensure WCAG AA contrast.
+
+## Components
+- UI components are **presentational** only—**no data fetching** inside.
+- Keep motion subtle and respect `prefers-reduced-motion`.
+
+## Forms
+- Prefer daisyUI form controls; associate labels; provide clear error/helper text.

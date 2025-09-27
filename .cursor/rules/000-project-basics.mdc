@@ -1,0 +1,37 @@
+---
+description: Global guardrails for this Next.js + TS + Tailwind + daisyUI project (SOLID, KISS, a11y, security).
+globs: "*"
+alwaysApply: true
+---
+
+# Project Guardrails (Global)
+
+## Architecture & Principles
+- Prefer **Server Components** by default; use `"use client"` only when necessary for interactivity.
+- Apply **SOLID**: SRP (one reason to change), composition over inheritance, small interfaces, depend on abstractions.
+- Apply **KISS**: straightforward, minimal APIs, no speculative abstractions.
+- Keep modules small and cohesive; avoid "god" files.
+
+## Code Organization
+- `src/app/**` uses App Router segments; co-locate route-only components within the route.
+- Shared UI in `src/components/ui` (presentation-only). Headless logic in `src/components/core` or `src/lib/**`.
+- Server-only code in `src/lib/server/**`; do not import it from client components.
+
+## A11y & UX
+- Semantic HTML; visible focus states; proper labels/`aria-*` where needed.
+- Support keyboard-only flows; honor `prefers-reduced-motion`.
+- Provide alt text; ensure WCAG AA contrast.
+
+## Security & Reliability
+- Validate inputs at boundaries (Zod ok). Never trust client input.
+- Avoid `dangerouslySetInnerHTML`. If unavoidable, sanitize.
+- Use HTTPS-only cookies, `SameSite=Lax|Strict`, short-lived tokens.
+- Log errors server-side; do not leak stack traces to clients.
+
+## Performance
+- Minimize client JS; split dynamic, heavy client components with `next/dynamic`.
+- Use `next/image` with correct `sizes`.
+- Cache intentionally (`fetch` cache / `revalidate`); avoid accidental stale data.
+
+## PR/Review Checklist
+- Single responsibility? Types precise? a11y covered? Error/loading states? Tests/linters green? No dead code?

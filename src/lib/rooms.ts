@@ -8,7 +8,7 @@ import type {
 } from "@prisma/client";
 import { MOVIE_FRAMES } from "@/data/movieFrames";
 import { prisma } from "./prisma";
-import { publishRoomUpdate } from "./roomEvents";
+import { publishRoomUpdate, publishPartyRedirect, publishPartyCountdown } from "./roomEvents";
 
 export type PlayerRole = "host" | "guest";
 export type RoomStatus = "lobby" | "in-progress" | "completed";
@@ -503,6 +503,28 @@ export async function updateRoomStatus(
 
   const normalizedRoom = toRoom(result);
   publishRoomUpdate(normalizedRoom);
+  
+  // Si on démarre la partie, déclencher la redirection et le countdown
+  if (normalizedStatus === "in-progress") {
+    // Publier l'événement de redirection immédiatement
+    publishPartyRedirect(normalizedRoom);
+    
+    // Démarrer le countdown de 5 secondes
+    let countdown = 5;
+    publishPartyCountdown(normalizedRoom, countdown);
+    
+    const countdownInterval = setInterval(() => {
+      countdown--;
+      if (countdown > 0) {
+        publishPartyCountdown(normalizedRoom, countdown);
+      } else {
+        clearInterval(countdownInterval);
+        // La partie commence maintenant - le frameStartedAt est déjà configuré
+        publishRoomUpdate(normalizedRoom);
+      }
+    }, 1000);
+  }
+  
   return normalizedRoom;
 }
 

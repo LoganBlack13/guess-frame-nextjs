@@ -1,0 +1,25 @@
+---
+description: Server Actions and Route Handlers (validation, errors, side effects).
+globs:
+  - "src/app/**/actions.ts"
+  - "src/app/**/actions.tsx"
+  - "src/app/api/**/route.ts"
+  - "src/lib/server/**/*.ts"
+alwaysApply: false
+---
+
+# Server Actions & APIs
+
+## Server Actions
+- `"use server"` at top of action modules.
+- Validate `FormData`/inputs with **Zod**; return typed results.
+- Revalidate relevant paths/tags after mutation.
+- No UI logic in actions; keep them headless and testable.
+
+## Route Handlers (`app/api/**/route.ts`)
+- Keep handlers thin; delegate to services in `src/lib/server/services/**`.
+- Return appropriate HTTP status codes; structured errors only.
+
+## Security
+- Rate-limit sensitive routes; audit-log auth/permission failures.
+- Never echo stack traces or secrets.
