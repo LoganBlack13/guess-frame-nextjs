@@ -5,6 +5,7 @@ alwaysApply: true
 ---
 
 # Project Guardrails (Global)
+- Write code and comment in english
 
 ## Architecture & Principles
 - Prefer **Server Components** by default; use `"use client"` only when necessary for interactivity.

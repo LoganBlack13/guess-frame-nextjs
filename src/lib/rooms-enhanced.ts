@@ -399,13 +399,23 @@ export async function advanceFrame(roomCode: string, sessionToken?: string): Pro
         await completeGame(room.game.id);
         
         // Enregistrer l'événement de fin
+        // Calculer la durée réelle basée sur l'événement game_started
+        const gameStartedEvent = await (tx as any).gameEvent.findFirst({
+          where: { gameId: room.game.id, type: 'game_started' },
+          orderBy: { timestamp: 'asc' }
+        });
+        
+        const actualDuration = gameStartedEvent 
+          ? Math.floor((now.getTime() - new Date(gameStartedEvent.timestamp).getTime()) / 1000)
+          : 0;
+        
         await GameEventManager.recordGameCompleted(
           room.game.id,
           totalFrames,
           0, // TODO: Calculer le nombre total de tentatives
           0, // TODO: Calculer le nombre de bonnes réponses
           room.players.map(p => ({ playerId: p.id, playerName: p.name, score: p.score })),
-          room.roundStartedAt ? Math.floor((now.getTime() - room.roundStartedAt.getTime()) / 1000) : 0
+          actualDuration
         );
       }
     } else {

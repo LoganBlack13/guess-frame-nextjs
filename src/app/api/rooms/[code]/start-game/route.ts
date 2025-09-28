@@ -96,16 +96,22 @@ export async function POST(request: Request, { params }: Params) {
       frameCount
     );
 
-    // Mettre à jour le statut de la salle pour passer en "in-progress"
-    const updatedRoom = await updateRoomStatus(roomCode, "in-progress", sessionToken);
-    
-    // Réinitialiser l'index de la frame courante pour les GameFrames TMDB
-    console.log('🔄 Resetting currentFrameIndex to 0 for room:', roomCode);
+    // Mettre à jour les paramètres de la salle avec la difficulté et durée choisies
+    console.log('🔄 Updating room settings with difficulty:', settings.difficulty);
     await prisma.room.update({
       where: { code: roomCode },
-      data: { currentFrameIndex: 0 }
+      data: {
+        difficulty: settings.difficulty,
+        durationMinutes: settings.durationMinutes,
+        guessWindowSeconds: secondsPerFrame,
+        targetFrameCount: frameCount,
+        currentFrameIndex: 0
+      }
     });
-    console.log('✅ currentFrameIndex reset to 0');
+    console.log('✅ Room settings updated');
+
+    // Mettre à jour le statut de la salle pour passer en "in-progress"
+    const updatedRoom = await updateRoomStatus(roomCode, "in-progress", sessionToken);
 
     console.log('✅ Game setup completed successfully');
 

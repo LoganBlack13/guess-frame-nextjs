@@ -841,6 +841,41 @@ export async function advanceFrame(
       updateData.status = "completed";
       updateData.currentFrameIndex = Math.max(0, Math.min(effectiveTarget, totalFrames) - 1);
       updateData.frameStartedAt = null;
+      
+      // Terminer la partie si elle existe et enregistrer l'événement game_completed
+      if (room.game) {
+        await (tx as any).game.update({
+          where: { id: room.game.id },
+          data: {
+            status: 'completed',
+            completedAt: now,
+          },
+        });
+        
+        // Enregistrer l'événement de fin
+        const gameStartedEvent = await (tx as any).gameEvent.findFirst({
+          where: { gameId: room.game.id, type: 'game_started' },
+          orderBy: { timestamp: 'asc' }
+        });
+        
+        const actualDuration = gameStartedEvent 
+          ? Math.floor((now.getTime() - new Date(gameStartedEvent.timestamp).getTime()) / 1000)
+          : 0;
+        
+        await (tx as any).gameEvent.create({
+          data: {
+            gameId: room.game.id,
+            type: 'game_completed',
+            data: JSON.stringify({
+              totalFrames: effectiveTarget,
+              totalGuesses: 0, // TODO: Calculer le nombre total de tentatives
+              correctGuesses: 0, // TODO: Calculer le nombre de bonnes réponses
+              playerScores: room.players.map(p => ({ playerId: p.id, playerName: p.name, score: p.score })),
+              duration: actualDuration,
+            }),
+          },
+        });
+      }
     } else {
       updateData.currentFrameIndex = nextIndex;
       updateData.frameStartedAt = now;

@@ -6,6 +6,7 @@ import PlayerListGame from "../components/PlayerListGame";
 import Podium from "../components/Podium";
 import PlayersList from "../components/PlayersList";
 import GameCompleted from "../components/GameCompleted";
+import ThemeSelector from "@/components/ui/theme-selector";
 
 interface PartyClientProps {
   initialRoom: Room;
@@ -493,6 +494,7 @@ export default function PartyClient({
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
           <span className="text-lg font-semibold text-primary">Guess the Frame</span>
           <div className="flex items-center gap-3">
+            <ThemeSelector />
             <span className={`badge ${eventsConnected ? "badge-success" : "badge-warning"}`}>
               {eventsConnected ? "Connected" : "Reconnecting..."}
             </span>

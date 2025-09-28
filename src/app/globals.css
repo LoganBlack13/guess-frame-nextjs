@@ -7,7 +7,7 @@
 
 @plugin "daisyui" {
 
-  themes: light --default, dark --prefersdark, synthwave, cyberpunk, retro;
+  themes: light --default, dark --prefersdark, synthwave, cyberpunk, retro, cupcake;
 
 }
 

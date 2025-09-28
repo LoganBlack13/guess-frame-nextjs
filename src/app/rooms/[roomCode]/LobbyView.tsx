@@ -6,6 +6,7 @@ import { useRoomController, UseRoomControllerOptions } from "./useRoomController
 import GameConfiguration from "./components/GameConfiguration";
 import PlayerList from "./components/PlayerList";
 import Chat from "./components/Chat";
+import ThemeSelector from "@/components/ui/theme-selector";
 
 interface LobbyViewProps extends UseRoomControllerOptions {
   initialRoom: Room;
@@ -124,6 +125,7 @@ export function LobbyView(props: LobbyViewProps) {
           </Link>
         </div>
         <div className="flex-none gap-2">
+          <ThemeSelector />
           <span className={`badge ${shareBadge}`}>
             {eventsConnected ? "Live" : "Reconnecting"}
           </span>
