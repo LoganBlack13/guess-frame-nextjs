@@ -2,9 +2,11 @@
 
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function Home() {
   const router = useRouter();
+  const { theme, themes, changeTheme, isLoading } = useTheme();
 
   const [hostName, setHostName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
@@ -103,17 +105,28 @@ export default function Home() {
           <div className="dropdown dropdown-end">
             <div tabIndex={0} role="button" className="btn btn-ghost">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              {!isLoading && (
+                <span className="ml-2">
+                  {themes.find(t => t.value === theme)?.icon}
+                </span>
+              )}
             </div>
-            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-              <li><a data-set-theme="light">☀️ Light</a></li>
-              <li><a data-set-theme="dark">🌙 Dark</a></li>
-              <li><a data-set-theme="synthwave">🌆 Synthwave</a></li>
-              <li><a data-set-theme="retro">📺 Retro</a></li>
-              <li><a data-set-theme="cyberpunk">🤖 Cyberpunk</a></li>
-              <li><a data-set-theme="valentine">💖 Valentine</a></li>
-              <li><a data-set-theme="halloween">🎃 Halloween</a></li>
+            <ul tabIndex={0} className="dropdown-content bg-base-300 rounded-box z-1 w-52 p-2 shadow-2xl">
+              {themes.map((themeOption) => (
+                <li key={themeOption.value}>
+                  <input 
+                    type="radio" 
+                    name="theme-dropdown" 
+                    className="theme-controller w-full btn btn-sm btn-block btn-ghost justify-start"
+                    aria-label={themeOption.label}
+                    value={themeOption.value}
+                    checked={theme === themeOption.value}
+                    onChange={() => changeTheme(themeOption.value)}
+                  />
+                </li>
+              ))}
             </ul>
           </div>
         </div>

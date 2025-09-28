@@ -32,7 +32,9 @@ export async function GET(request: Request, { params }: Params) {
       controller.enqueue(encoder.encode(formatSse("room:update", initialRoom)));
 
       const unsubscribe = subscribeToRoom(roomCode, (event) => {
-        controller.enqueue(encoder.encode(formatSse(event.type, event.room)));
+        // Pour les événements de chat, envoyer le message, sinon envoyer la room
+        const data = event.type === "chat:message" ? event.message : event.room;
+        controller.enqueue(encoder.encode(formatSse(event.type, data)));
       });
 
       const abort = () => {

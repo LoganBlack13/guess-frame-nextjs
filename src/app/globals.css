@@ -1,78 +1,17 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  color-scheme: light dark;
+@theme {
+  --font-family-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-family-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular;
+}
+
+@plugin "daisyui" {
+
+  themes: light --default, dark --prefersdark, synthwave, cyberpunk, retro;
+
 }
 
 body {
   @apply min-h-screen bg-base-100 text-base-content font-sans antialiased;
 }
 
-a {
-  @apply text-primary transition;
-}
-
-a:hover {
-  color: hsl(var(--p) / 0.8);
-}
-
-/* Synthwave/Retro Styles */
-.synthwave-bg {
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-  position: relative;
-}
-
-.synthwave-bg::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.neon-glow {
-  box-shadow: 
-    0 0 5px currentColor,
-    0 0 10px currentColor,
-    0 0 15px currentColor;
-}
-
-.neon-text {
-  text-shadow: 
-    0 0 5px currentColor,
-    0 0 10px currentColor,
-    0 0 15px currentColor;
-}
-
-.retro-border {
-  border: 2px solid;
-  border-image: linear-gradient(45deg, #ff6b9d, #4ecdc4, #45b7d1, #96ceb4) 1;
-}
-
-.grid-pattern {
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-.movie-icon {
-  background: linear-gradient(45deg, #ff6b9d, #4ecdc4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Full height for 16:9 aspect ratio */
-.full-height {
-  height: 100vh;
-  max-height: 100vh;
-}

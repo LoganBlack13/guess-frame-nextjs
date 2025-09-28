@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from "react";
 import type { GameDifficulty, Room, RoomStatus } from "@/lib/rooms";
-import PlayerList from "../components/PlayerList";
+import PlayerListGame from "../components/PlayerListGame";
+import Podium from "../components/Podium";
+import PlayersList from "../components/PlayersList";
+import GameCompleted from "../components/GameCompleted";
 
 interface PartyClientProps {
   initialRoom: Room;
@@ -499,27 +502,47 @@ export default function PartyClient({
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-8">
-        {/* Players List - Moved to top */}
-        <PlayerList 
-          players={players} 
-          currentFrameSolvedPlayerIds={currentFrame?.solvedPlayerIds || []}
-        />
+        {room.status === "completed" ? (
+          <>
+            {/* Game Completed Header */}
+            <GameCompleted />
+            
+            {/* Podium for top 3 players */}
+            <Podium 
+              players={players} 
+              currentPlayerId={playerId}
+            />
+            
+            {/* List of remaining players */}
+            <PlayersList 
+              players={players} 
+              currentPlayerId={playerId}
+            />
+          </>
+        ) : (
+          <>
+            {/* Players List - Horizontal layout for game */}
+            <PlayerListGame 
+              players={players} 
+              currentPlayerId={playerId}
+              currentFrameSolvedPlayerIds={currentFrame?.solvedPlayerIds || []}
+            />
 
-        {/* Game Status */}
-        <div className="card bg-base-200 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title text-2xl">
-              {room.status === "lobby" && "Waiting to start"}
-              {room.status === "in-progress" && "Game in progress"}
-              {room.status === "completed" && "Game completed"}
-            </h2>
-            <p className="text-base-content/70">
-              {room.status === "lobby" && "The host will start the game when ready."}
-              {room.status === "in-progress" && `Frame ${currentFrameDisplay} of ${totalFrames}`}
-              {room.status === "completed" && "The game has ended. Check the final scores below."}
-            </p>
-          </div>
-        </div>
+            {/* Game Status */}
+            <div className="card bg-base-200 shadow-xl">
+              <div className="card-body">
+                <h2 className="card-title text-2xl">
+                  {room.status === "lobby" && "Waiting to start"}
+                  {room.status === "in-progress" && "Game in progress"}
+                </h2>
+                <p className="text-base-content/70">
+                  {room.status === "lobby" && "The host will start the game when ready."}
+                  {room.status === "in-progress" && `Frame ${currentFrameDisplay} of ${totalFrames}`}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Current Frame (if game is active) */}
         {room.status === "in-progress" && currentFrame && (

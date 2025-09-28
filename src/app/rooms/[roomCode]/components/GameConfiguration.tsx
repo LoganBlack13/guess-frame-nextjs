@@ -103,26 +103,19 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
   const frameCount = calculateFrameCount();
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="w-6 h-6 text-primary" />
-        <h2 className="text-2xl font-bold">Configuration de la partie</h2>
-      </div>
+    <div className="card bg-base-200 shadow-xl">
+      <div className="card-body">
+        <h2 className="card-title">Game Configuration</h2>
 
-      <div className="space-y-6">
-        {/* Paramètres obligatoires */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Difficulté */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-3">
-              <Target className="w-4 h-4 inline mr-2" />
-              Difficulté *
+            <label className="label">
+              <span className="label-text">Difficulty *</span>
             </label>
-            <Select
+            <select
+              className="select select-bordered w-full"
               value={settings.difficulty}
-              onValueChange={(value: string) => 
-                setSettings(prev => ({ ...prev, difficulty: value }))
-              }
+              onChange={(e) => setSettings(prev => ({ ...prev, difficulty: e.target.value as any }))}
               disabled={isGenerating}
             >
               {DIFFICULTY_OPTIONS.map(option => (
@@ -130,22 +123,23 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
                   {option.label}
                 </option>
               ))}
-            </Select>
-            <p className="text-sm text-base-content/60 mt-1">
-              {DIFFICULTY_OPTIONS.find(opt => opt.value === settings.difficulty)?.description}
-            </p>
+            </select>
+            <div className="label">
+              <span className="label-text-alt">
+                {DIFFICULTY_OPTIONS.find(opt => opt.value === settings.difficulty)?.description}
+              </span>
+            </div>
           </div>
 
-          {/* Durée */}
           <div>
-            <label className="block text-sm font-medium mb-3">
-              <Clock className="w-4 h-4 inline mr-2" />
-              Durée (minutes) *
+            <label className="label">
+              <span className="label-text">Duration (minutes) *</span>
             </label>
-            <Input
+            <input
               type="number"
               min="1"
               max="60"
+              className="input input-bordered w-full"
               value={settings.durationMinutes}
               onChange={(e) => setSettings(prev => ({ 
                 ...prev, 
@@ -153,90 +147,84 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
               }))}
               disabled={isGenerating}
             />
-            <p className="text-sm text-base-content/60 mt-1">
-              Durée totale de la partie
-            </p>
-          </div>
-        </div>
-
-        {/* Résumé */}
-        <div className="bg-base-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Film className="w-5 h-5 text-primary" />
-            <span className="font-medium">Résumé de la partie</span>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-base-content/60">Frames estimées:</span>
-              <div className="font-semibold text-lg">{frameCount}</div>
-            </div>
-            <div>
-              <span className="text-base-content/60">Temps par frame:</span>
-              <div className="font-semibold">
-                {settings.difficulty === 'easy' ? '30s' : settings.difficulty === 'normal' ? '20s' : '10s'}
-              </div>
-            </div>
-            <div>
-              <span className="text-base-content/60">Durée totale:</span>
-              <div className="font-semibold">{settings.durationMinutes}min</div>
-            </div>
-            <div>
-              <span className="text-base-content/60">Genres:</span>
-              <div className="font-semibold">
-                {settings.genres?.length || 0} sélectionné{(settings.genres?.length || 0) > 1 ? 's' : ''}
-              </div>
+            <div className="label">
+              <span className="label-text-alt">Total game duration</span>
             </div>
           </div>
         </div>
 
-        {/* Paramètres avancés */}
-        <div>
-            <Button
-              variant="outline"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              disabled={isGenerating}
-              className="w-full"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              {showAdvanced ? 'Masquer' : 'Afficher'} les paramètres avancés
-            </Button>
+        <div className="card bg-base-100 mb-4">
+          <div className="card-body">
+            <h3 className="card-title text-sm">Game Summary</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <div className="text-xs opacity-70">Estimated frames:</div>
+                <div className="font-bold text-lg">{frameCount}</div>
+              </div>
+              <div>
+                <div className="text-xs opacity-70">Time per frame:</div>
+                <div className="font-bold">
+                  {settings.difficulty === 'easy' ? '30s' : settings.difficulty === 'normal' ? '20s' : '10s'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs opacity-70">Total duration:</div>
+                <div className="font-bold">{settings.durationMinutes}min</div>
+              </div>
+              <div>
+                <div className="text-xs opacity-70">Genres:</div>
+                <div className="font-bold">
+                  {settings.genres?.length || 0} selected
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <button
+            className="btn btn-outline w-full"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            disabled={isGenerating}
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            {showAdvanced ? 'Hide' : 'Show'} advanced settings
+          </button>
 
           {showAdvanced && (
-            <div className="mt-4 space-y-4 p-4 bg-base-100 rounded-lg border">
-              {/* Genres */}
+            <div className="mt-4 space-y-4 p-4 bg-base-100 rounded-lg">
               <div>
-                <label className="block text-sm font-medium mb-3">
-                  <Tag className="w-4 h-4 inline mr-2" />
-                  Genres (optionnel)
+                <label className="label">
+                  <span className="label-text">Genres (optional)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {GENRE_OPTIONS.map(genre => (
-                    <Badge
+                    <span
                       key={genre.value}
-                      variant={settings.genres?.includes(genre.value) ? "default" : "outline"}
-                      className="cursor-pointer"
+                      className={`badge cursor-pointer ${
+                        settings.genres?.includes(genre.value) ? 'badge-primary' : 'badge-outline'
+                      }`}
                       onClick={() => toggleGenre(genre.value)}
                     >
                       {genre.label}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
-                <p className="text-sm text-base-content/60 mt-2">
-                  Laissez vide pour inclure tous les genres
-                </p>
+                <div className="label">
+                  <span className="label-text-alt">Leave empty to include all genres</span>
+                </div>
               </div>
 
-              {/* Années */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">
-                    <Calendar className="w-4 h-4 inline mr-2" />
-                    Année minimum
+                  <label className="label">
+                    <span className="label-text">Min year</span>
                   </label>
-                  <Input
+                  <input
                     type="number"
                     min="1900"
                     max="2024"
+                    className="input input-bordered w-full"
                     value={settings.yearRange?.min || 1990}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
@@ -246,14 +234,14 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">
-                    <Calendar className="w-4 h-4 inline mr-2" />
-                    Année maximum
+                  <label className="label">
+                    <span className="label-text">Max year</span>
                   </label>
-                  <Input
+                  <input
                     type="number"
                     min="1900"
                     max="2024"
+                    className="input input-bordered w-full"
                     value={settings.yearRange?.max || 2024}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
@@ -267,34 +255,31 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
           )}
         </div>
 
-        {/* Messages d'erreur */}
         {error && (
-          <Alert variant="destructive">
+          <div className="alert alert-error mb-4">
             <AlertCircle className="w-4 h-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+            <span>{error}</span>
+          </div>
         )}
 
-        {/* Bouton de démarrage */}
-        <Button
+        <button
+          className="btn btn-primary w-full"
           onClick={handleStartGame}
           disabled={isGenerating || frameCount < 1}
-          className="w-full"
-          size="lg"
         >
           {isGenerating ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Génération en cours...
+              Generating...
             </>
           ) : (
             <>
               <CheckCircle className="w-5 h-5 mr-2" />
-              Démarrer la partie ({frameCount} frames)
+              Start Game ({frameCount} frames)
             </>
           )}
-        </Button>
+        </button>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -60,6 +60,16 @@ export function useRoomController({
   const [partyCountdown, setPartyCountdown] = useState<number | null>(null);
   const [shouldRedirectToParty, setShouldRedirectToParty] = useState(false);
 
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<Array<{
+    id: string;
+    playerId: string;
+    playerName: string;
+    message: string;
+    timestamp: number;
+  }>>([]);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
   const autoAdvanceTriggeredRef = useRef(false);
 
   const canManage = Boolean(hostSessionActive);
@@ -188,9 +198,25 @@ export function useRoomController({
       }
     };
 
+    const handleChatMessage: EventListener = (event) => {
+      const message = event as MessageEvent<string>;
+      try {
+        const data = JSON.parse(message.data);
+        setChatMessages(prev => {
+          // Éviter les doublons en vérifiant l'ID du message
+          const exists = prev.some(msg => msg.id === data.id);
+          if (exists) return prev;
+          return [...prev, data];
+        });
+      } catch (error) {
+        console.error("Failed to parse chat message", error);
+      }
+    };
+
     source.addEventListener("room:update", handleUpdate);
     source.addEventListener("party:redirect", handlePartyRedirect);
     source.addEventListener("party:countdown", handlePartyCountdown);
+    source.addEventListener("chat:message", handleChatMessage);
     source.onopen = () => {
       setEventsConnected(true);
     };
@@ -203,6 +229,7 @@ export function useRoomController({
       source.removeEventListener("room:update", handleUpdate);
       source.removeEventListener("party:redirect", handlePartyRedirect);
       source.removeEventListener("party:countdown", handlePartyCountdown);
+      source.removeEventListener("chat:message", handleChatMessage);
       source.close();
     };
   }, [roomCode, roomMissing]);
@@ -502,6 +529,37 @@ export function useRoomController({
     void handleCopyCode();
   }, [handleCopyCode]);
 
+  // Chat functions
+  const sendChatMessage = useCallback(async (message: string) => {
+    if (!effectivePlayerId) {
+      throw new Error('Player ID required to send messages');
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const response = await fetch(`/api/rooms/${roomCode}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: effectivePlayerId,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
+      }
+
+      // Le message sera reçu via SSE, pas besoin de l'ajouter localement
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      throw error;
+    } finally {
+      setIsSendingMessage(false);
+    }
+  }, [effectivePlayerId, roomCode]);
+
   // Fonction pour générer la partie
   const handleStartGame = useCallback(async (settings: {
     difficulty: 'easy' | 'normal' | 'hard';
@@ -600,5 +658,9 @@ export function useRoomController({
     handleStartGame,
     isGeneratingGame,
     gameGenerationError,
+    // Chat properties
+    chatMessages,
+    sendChatMessage,
+    isSendingMessage,
   };
 }

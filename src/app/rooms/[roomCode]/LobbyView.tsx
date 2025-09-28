@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { Room } from "@/lib/rooms";
 import { useRoomController, UseRoomControllerOptions } from "./useRoomController";
 import GameConfiguration from "./components/GameConfiguration";
+import PlayerList from "./components/PlayerList";
+import Chat from "./components/Chat";
 
 interface LobbyViewProps extends UseRoomControllerOptions {
   initialRoom: Room;
@@ -41,6 +43,9 @@ export function LobbyView(props: LobbyViewProps) {
     handleStartGame,
     isGeneratingGame,
     gameGenerationError,
+    chatMessages,
+    sendChatMessage,
+    isSendingMessage,
   } = controller;
 
   if (roomMissing || !room) {
@@ -111,147 +116,123 @@ export function LobbyView(props: LobbyViewProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-base-100">
-      <header className="border-b border-base-300 bg-base-100">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-5 sm:flex-nowrap">
-          <Link href="/" className="text-lg font-semibold text-primary">
+    <div className="min-h-screen bg-base-100">
+      <div className="navbar bg-base-200">
+        <div className="flex-1">
+          <Link href="/" className="btn btn-ghost text-xl">
             Guess the Frame
           </Link>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className={`badge ${shareBadge} badge-outline uppercase`}>
-              {eventsConnected ? "Live" : "Reconnecting"}
-            </span>
-            <button
-              type="button"
-              onClick={() => refreshRoom({ silent: false })}
-              className="btn btn-ghost btn-sm"
-              disabled={isRefreshing}
-            >
-              {isRefreshing ? "Refreshing…" : "Refresh"}
-            </button>
-            <Link href={`/rooms/${room.code}/party`} className="btn btn-secondary btn-sm">
-              Go to party view
-            </Link>
-            {room.status === "completed" ? (
-              <Link href={`/rooms/${room.code}/scoreboard`} className="btn btn-ghost btn-sm">
-                Scoreboard
-              </Link>
-            ) : null}
-          </div>
         </div>
-      </header>
+        <div className="flex-none gap-2">
+          <span className={`badge ${shareBadge}`}>
+            {eventsConnected ? "Live" : "Reconnecting"}
+          </span>
+          <button
+            type="button"
+            onClick={() => refreshRoom({ silent: false })}
+            className="btn btn-ghost btn-sm"
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? "Refreshing…" : "Refresh"}
+          </button>
+          <Link href={`/rooms/${room.code}/party`} className="btn btn-secondary btn-sm">
+            Party view
+          </Link>
+        </div>
+      </div>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
-        <section className="card border border-base-300 bg-base-200 shadow-xl">
-          <div className="card-body gap-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="container mx-auto p-4">
+        <div className="card bg-base-200 shadow-xl mb-4">
+          <div className="card-body">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <p className="text-sm font-medium uppercase tracking-wide text-base-content/60">Room code</p>
-                <p className="font-mono text-4xl font-semibold text-base-content">{room.code}</p>
-                <p className="mt-2 text-sm text-base-content/70">
-                  Share this code and send everyone to the party view when you are ready to launch.
+                <h2 className="card-title">Room Code</h2>
+                <p className="text-4xl font-mono font-bold">{room.code}</p>
+                <p className="text-sm opacity-70">
+                  Share this code with your friends to join the game
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:items-end">
+              <div className="flex flex-col gap-2">
                 <button type="button" className="btn btn-primary" onClick={handleShareCopy}>
-                  {copyState === "copied" ? "Copied" : "Copy code"}
+                  {copyState === "copied" ? "Copied!" : "Copy Code"}
                 </button>
-                {shareUrl ? (
-                  <span className="text-xs text-base-content/60">
-                    Share link:
-                    <br />
-                    <span className="font-mono">{shareUrl}</span>
-                  </span>
-                ) : null}
+                {shareUrl && (
+                  <div className="text-xs opacity-60">
+                    <div>Share link:</div>
+                    <div className="font-mono break-all">{shareUrl}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="card border border-base-300 bg-base-200 shadow-md">
-          <div className="card-body gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-2xl text-base-content">Players in lobby</h2>
-              <span className="badge badge-outline">{players.length}&nbsp;joined</span>
-            </div>
-            <ul className="grid gap-3 md:grid-cols-2">
-              {players.map((player) => (
-                <li key={player.id} className="rounded-lg border border-base-300 bg-base-100 p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-base-content">{player.name}</span>
-                    <div className="flex items-center gap-2 text-xs text-base-content/70">
-                      <span className="badge badge-outline">{player.score} pt{player.score === 1 ? "" : "s"}</span>
-                      {player.role === "host" ? (
-                        <span className="badge badge-primary badge-sm">Host</span>
-                      ) : null}
-                      {player.id === props.playerId ? (
-                        <span className="badge badge-outline badge-sm">You</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm text-base-content/60">
-                    Joined {new Date(player.joinedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            {players.length === 1 ? (
-              <p className="text-sm text-base-content/60">
-                Waiting for friends to join. Share the link above to bring everyone into the lobby.
-              </p>
-            ) : null}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          <div className="lg:col-span-1">
+            <PlayerList 
+              players={players} 
+              currentPlayerId={props.playerId}
+            />
           </div>
-        </section>
+          
+          <div className="lg:col-span-2">
+            <Chat
+              messages={chatMessages}
+              currentPlayerId={props.playerId}
+              onSendMessage={sendChatMessage}
+              isConnected={eventsConnected}
+            />
+          </div>
+        </div>
 
-        {/* Configuration de la partie - seulement si pas encore générée */}
         {room.status === "lobby" && hostSessionActive ? (
           <GameConfiguration 
             onStartGame={handleStartGame}
             isGenerating={isGeneratingGame}
           />
         ) : room.status === "lobby" ? (
-          <section className="card border border-base-300 bg-base-200 shadow-md">
-            <div className="card-body gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="card-title text-2xl text-base-content">Game setup</h2>
-                <span className="badge badge-outline">{room.targetFrameCount}&nbsp;frames</span>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-base-300 bg-base-100 p-4">
-                  <p className="text-sm uppercase tracking-wide text-base-content/60">Difficulty</p>
-                  <p className="text-lg font-semibold text-base-content">{room.difficulty.toUpperCase()}</p>
-                  <p className="mt-1 text-sm text-base-content/60">
-                    Players get {room.guessWindowSeconds} seconds per frame to lock in their guess.
-                  </p>
+          <div className="card bg-base-200 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Game Setup</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="card bg-base-100">
+                  <div className="card-body">
+                    <h3 className="card-title text-sm">Difficulty</h3>
+                    <p className="text-2xl font-bold">{room.difficulty.toUpperCase()}</p>
+                    <p className="text-sm opacity-70">
+                      {room.guessWindowSeconds} seconds per frame
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-lg border border-base-300 bg-base-100 p-4">
-                  <p className="text-sm uppercase tracking-wide text-base-content/60">Duration</p>
-                  <p className="text-lg font-semibold text-base-content">{room.durationMinutes} minute party</p>
-                  <p className="mt-1 text-sm text-base-content/60">
-                    Expect roughly {room.targetFrameCount} frames this round.
-                  </p>
+                <div className="card bg-base-100">
+                  <div className="card-body">
+                    <h3 className="card-title text-sm">Duration</h3>
+                    <p className="text-2xl font-bold">{room.durationMinutes} minutes</p>
+                    <p className="text-sm opacity-70">
+                      ~{room.targetFrameCount} frames expected
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className="alert alert-info">
-                <span>⏳ En attente de l'hôte pour configurer la partie...</span>
+                <span>Waiting for host to configure the game...</span>
               </div>
             </div>
-          </section>
+          </div>
         ) : null}
 
-        {/* Contrôles de l'hôte - seulement si la partie est générée */}
         {room.status !== "lobby" && hostSessionActive ? (
-          <section className="card border border-dashed border-primary bg-base-200/70 shadow-sm">
-            <div className="card-body gap-4">
-              <h2 className="card-title text-xl text-base-content">Host controls</h2>
-              <div className="flex flex-wrap items-center gap-3">
+          <div className="card bg-base-200 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title">Host Controls</h2>
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={() => mutateStatus("in-progress")}
                   disabled={isUpdatingStatus}
                 >
-                  Start match
+                  Start Match
                 </button>
                 <button
                   type="button"
@@ -259,7 +240,7 @@ export function LobbyView(props: LobbyViewProps) {
                   onClick={() => mutateStatus("lobby")}
                   disabled={isUpdatingStatus}
                 >
-                  Reset to lobby
+                  Reset to Lobby
                 </button>
                 <button
                   type="button"
@@ -267,10 +248,10 @@ export function LobbyView(props: LobbyViewProps) {
                   onClick={() => mutateStatus("completed")}
                   disabled={isUpdatingStatus}
                 >
-                  End match
+                  End Match
                 </button>
               </div>
-              {statusError ? (
+              {statusError && (
                 <div className="alert alert-error">
                   <span>{statusError}</span>
                   <button
@@ -281,18 +262,17 @@ export function LobbyView(props: LobbyViewProps) {
                     Clear
                   </button>
                 </div>
-              ) : null}
+              )}
             </div>
-          </section>
-        ) : null}
-
-        {errorMessage ? (
-          <div className="alert alert-warning">
-            <span className="font-medium">Heads up:</span>
-            <span>{errorMessage}</span>
           </div>
         ) : null}
-      </main>
+
+        {errorMessage && (
+          <div className="alert alert-warning">
+            <span>{errorMessage}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

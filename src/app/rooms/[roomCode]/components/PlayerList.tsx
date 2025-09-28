@@ -1,6 +1,7 @@
 'use client';
 
-import { PlayerAvatar } from '@/components/ui/player-avatar';
+import PlayerAvatarSimple from './PlayerAvatarSimple';
+import { formatJoinedTime } from '@/lib/dateUtils';
 
 interface Player {
   id: string;
@@ -12,33 +13,92 @@ interface Player {
 
 interface PlayerListProps {
   players: Player[];
+  currentPlayerId?: string | null;
   currentFrameSolvedPlayerIds?: string[];
   className?: string;
 }
 
-export default function PlayerList({ players, currentFrameSolvedPlayerIds = [], className }: PlayerListProps) {
+export default function PlayerList({ 
+  players, 
+  currentPlayerId,
+  currentFrameSolvedPlayerIds = [], 
+  className 
+}: PlayerListProps) {
   const sortedPlayers = [...players].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
+    // Host en premier, puis par ordre d'arrivée
+    if (a.role === 'host' && b.role !== 'host') return -1;
+    if (b.role === 'host' && a.role !== 'host') return 1;
     return a.joinedAt - b.joinedAt;
   });
 
-
   return (
-    <div className={`card bg-base-200 shadow-xl ${className}`}>
-      <div className="card-body">
-        <h3 className="text-xl font-semibold mb-4">Players ({players.length})</h3>
-        <div className="flex flex-wrap gap-4 justify-center">
+    <div className={`card bg-base-200 shadow-xl h-full flex flex-col ${className}`}>
+      <div className="card-body flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="card-title">Players</h3>
+          <div className="badge badge-primary">
+            {players.length} joined
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto space-y-2">
           {sortedPlayers.map((player) => {
-            const isCorrect = currentFrameSolvedPlayerIds.includes(player.id);
+            const isCurrentPlayer = player.id === currentPlayerId;
+            const isHost = player.role === 'host';
+            
             return (
-              <PlayerAvatar
+              <div
                 key={player.id}
-                name={player.name}
-                score={player.score}
-                isCorrect={isCorrect}
-              />
+                className={`card bg-base-100 ${
+                  isCurrentPlayer ? 'border-primary' : ''
+                } ${isHost ? 'border-warning' : ''}`}
+              >
+                <div className="card-body p-4">
+                  <div className="flex items-center gap-3">
+                    <PlayerAvatarSimple
+                      name={player.name}
+                      isHost={isHost}
+                      isCurrentPlayer={isCurrentPlayer}
+                    />
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">
+                          {player.name}
+                        </span>
+                        {isCurrentPlayer && (
+                          <span className="badge badge-primary badge-sm">
+                            YOU
+                          </span>
+                        )}
+                        {isHost && (
+                          <span className="badge badge-warning badge-sm">
+                            HOST
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="text-sm opacity-70">
+                        Joined {formatJoinedTime(player.joinedAt)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             );
           })}
+          
+          {players.length === 1 && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">🎬</div>
+              <p className="font-bold">
+                Waiting for players to join...
+              </p>
+              <p className="text-sm opacity-70 mt-2">
+                Share the room code above to invite friends!
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

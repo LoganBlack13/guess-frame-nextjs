@@ -2,9 +2,10 @@ import { EventEmitter } from "events";
 import type { Room } from "@/lib/rooms";
 
 export type RoomEvent = {
-  type: "room:update" | "party:redirect" | "party:countdown";
-  room: Room;
+  type: "room:update" | "party:redirect" | "party:countdown" | "chat:message";
+  room?: Room;
   countdown?: number;
+  message?: any;
 };
 
 const emitter = new EventEmitter();
@@ -33,6 +34,13 @@ export function publishPartyCountdown(room: Room, countdown: number) {
     type: "party:countdown",
     room,
     countdown,
+  } satisfies RoomEvent);
+}
+
+export function publishChatMessage(roomCode: string, message: any) {
+  emitter.emit(eventKey(roomCode), {
+    type: "chat:message",
+    message,
   } satisfies RoomEvent);
 }
 

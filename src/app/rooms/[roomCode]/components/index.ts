@@ -1,5 +1,9 @@
 export { default as RoomHeader } from './RoomHeader';
 export { default as PlayerList } from './PlayerList';
+export { default as PlayerListGame } from './PlayerListGame';
+export { default as Podium } from './Podium';
+export { default as PlayersList } from './PlayersList';
+export { default as GameCompleted } from './GameCompleted';
 export { default as GameSettings } from './GameSettings';
 export { default as CurrentFrame } from './CurrentFrame';
 export { default as FrameQueue } from './FrameQueue';
@@ -9,3 +13,5 @@ export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as SkeletonLoader } from './SkeletonLoader';
 export { default as Notification } from './Notification';
+export { default as Chat } from './Chat';
+export { default as PlayerAvatarSimple } from './PlayerAvatarSimple';
