@@ -1,8 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-export type Theme = 'light' | 'dark' | 'synthwave' | 'cyberpunk' | 'cupcake' | 'retro';
+export type Theme =
+  | 'light'
+  | 'dark'
+  | 'synthwave'
+  | 'cyberpunk'
+  | 'cupcake'
+  | 'retro';
 
 const themes: { value: Theme; label: string; icon: string }[] = [
   { value: 'light', label: 'Light', icon: '☀️' },
@@ -21,7 +27,7 @@ export function useTheme() {
     // Récupérer le thème depuis localStorage ou utiliser le thème par défaut
     const savedTheme = localStorage.getItem('theme') as Theme;
     const initialTheme = savedTheme || 'synthwave';
-    
+
     setTheme(initialTheme);
     document.documentElement.setAttribute('data-theme', initialTheme);
     setIsLoading(false);

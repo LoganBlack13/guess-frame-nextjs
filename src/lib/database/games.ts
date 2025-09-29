@@ -1,5 +1,13 @@
 import { prisma } from '../prisma';
-import { Game, Movie, GameFrame, GameEvent, GameEventData, GameStats, GameTimeline } from './types';
+import {
+  Game,
+  GameEvent,
+  GameEventData,
+  GameFrame,
+  GameStats,
+  GameTimeline,
+  Movie,
+} from './types';
 
 // Créer une nouvelle partie ou récupérer la partie existante
 export async function createGame(roomCode: string): Promise<Game> {
@@ -128,7 +136,9 @@ export async function getGame(gameId: string): Promise<Game | null> {
 }
 
 // Récupérer une partie par code de salle
-export async function getGameByRoomCode(roomCode: string): Promise<Game | null> {
+export async function getGameByRoomCode(
+  roomCode: string
+): Promise<Game | null> {
   const game = await prisma.game.findUnique({
     where: { roomCode },
     include: {
@@ -152,7 +162,10 @@ export async function getGameByRoomCode(roomCode: string): Promise<Game | null> 
 }
 
 // Ajouter un événement à une partie
-export async function addGameEvent(gameId: string, eventData: GameEventData): Promise<GameEvent> {
+export async function addGameEvent(
+  gameId: string,
+  eventData: GameEventData
+): Promise<GameEvent> {
   const event = await prisma.gameEvent.create({
     data: {
       gameId,
@@ -228,15 +241,18 @@ export async function createOrGetMovie(movieData: {
 }
 
 // Ajouter des frames à une partie
-export async function addGameFrames(gameId: string, frames: Array<{
-  movieId: string;
-  imageUrl: string;
-  aspectRatio: number;
-  isScene: boolean;
-  order: number;
-}>): Promise<GameFrame[]> {
-  const gameFrames = await prisma.gameFrame.createMany({
-    data: frames.map(frame => ({
+export async function addGameFrames(
+  gameId: string,
+  frames: Array<{
+    movieId: string;
+    imageUrl: string;
+    aspectRatio: number;
+    isScene: boolean;
+    order: number;
+  }>
+): Promise<GameFrame[]> {
+  await prisma.gameFrame.createMany({
+    data: frames.map((frame) => ({
       gameId,
       movieId: frame.movieId,
       imageUrl: frame.imageUrl,
@@ -267,86 +283,93 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
   if (!game) return null;
 
   const events = await getGameEvents(gameId);
-  const guesses = events.filter(e => e.type === 'guess_submitted');
-  const correctGuesses = guesses.filter(e => {
+  const guesses = events.filter((e) => e.type === 'guess_submitted');
+  const correctGuesses = guesses.filter((e) => {
     const data = JSON.parse(e.data);
     return data.isCorrect;
   });
 
   // Calculer les statistiques des joueurs basées sur les événements de cette partie spécifique
   const playerGameStats = [];
-  
+
   // Grouper les événements par joueur
-  const playerEvents = new Map<string, any[]>();
-  
-  events.forEach(event => {
+  const playerEvents = new Map<string, Array<{ type: string; data: string; timestamp: Date }>>();
+
+  events.forEach((event) => {
     if (event.type === 'guess_submitted') {
       const data = JSON.parse(event.data);
       const playerId = data.playerId;
-      
+
       if (!playerEvents.has(playerId)) {
         playerEvents.set(playerId, []);
       }
       playerEvents.get(playerId)!.push(event);
     }
   });
-  
+
   // Calculer les statistiques pour chaque joueur
   for (const [playerId, playerEventList] of playerEvents) {
-    const correctGuesses = playerEventList.filter(event => {
+    const correctGuesses = playerEventList.filter((event) => {
       const data = JSON.parse(event.data);
       return data.isCorrect;
     });
-    
+
     // Récupérer le nom du joueur depuis le premier événement
     const firstEvent = playerEventList[0];
     const firstEventData = JSON.parse(firstEvent.data);
     const playerName = firstEventData.playerName;
-    
+
     // Calculer le score total du joueur
     const totalScore = playerEventList.reduce((sum, event) => {
       const data = JSON.parse(event.data);
       return sum + (data.pointsAwarded || 0);
     }, 0);
-    
+
     // Calculer le temps de réponse moyen pour ce joueur
     let averageResponseTime = 0;
     if (playerEventList.length > 0) {
       const responseTimes: number[] = [];
-      
+
       for (const guessEvent of playerEventList) {
         const guessData = JSON.parse(guessEvent.data);
         const frameIndex = guessData.frameIndex;
-        
+
         // Trouver l'événement frame_started correspondant à cette frame
-        const frameStartedEvent = events.find(e => {
+        const frameStartedEvent = events.find((e) => {
           if (e.type === 'frame_started') {
             const frameData = JSON.parse(e.data);
             return frameData.frameIndex === frameIndex;
           }
           return false;
         });
-        
+
         if (frameStartedEvent) {
-          const responseTime = new Date(guessEvent.timestamp).getTime() - new Date(frameStartedEvent.timestamp).getTime();
+          const responseTime =
+            new Date(guessEvent.timestamp).getTime() -
+            new Date(frameStartedEvent.timestamp).getTime();
           responseTimes.push(responseTime);
         }
       }
-      
+
       if (responseTimes.length > 0) {
-        averageResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+        averageResponseTime =
+          responseTimes.reduce((sum, time) => sum + time, 0) /
+          responseTimes.length;
         // Convertir en secondes
         averageResponseTime = Math.round(averageResponseTime / 1000);
       }
     }
-    
+
     playerGameStats.push({
       playerId,
       playerName,
       score: totalScore,
       guesses: playerEventList.length,
       correctGuesses: correctGuesses.length,
-      accuracy: playerEventList.length > 0 ? correctGuesses.length / playerEventList.length : 0,
+      accuracy:
+        playerEventList.length > 0
+          ? correctGuesses.length / playerEventList.length
+          : 0,
       averageResponseTime,
     });
   }
@@ -354,32 +377,46 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
   // Calculer la durée basée sur les événements plutôt que sur les timestamps de la game
   let duration = 0;
   if (events.length > 0) {
-    const gameStarted = events.find(e => e.type === 'game_started');
-    const gameCompleted = events.find(e => e.type === 'game_completed');
-    
+    const gameStarted = events.find((e) => e.type === 'game_started');
+    const gameCompleted = events.find((e) => e.type === 'game_completed');
+
     if (gameStarted && gameCompleted) {
-      duration = Math.floor((new Date(gameCompleted.timestamp).getTime() - new Date(gameStarted.timestamp).getTime()) / 1000);
+      duration = Math.floor(
+        (new Date(gameCompleted.timestamp).getTime() -
+          new Date(gameStarted.timestamp).getTime()) /
+          1000
+      );
     } else if (gameStarted) {
       // Si pas de game_completed, utiliser une approche plus intelligente
       // Trouver le dernier événement de frame_advanced (qui marque la fin d'une frame)
-      const frameAdvancedEvents = events.filter(e => e.type === 'frame_advanced');
-      
+      const frameAdvancedEvents = events.filter(
+        (e) => e.type === 'frame_advanced'
+      );
+
       if (frameAdvancedEvents.length > 0) {
         // Utiliser le dernier frame_advanced comme fin de partie
-        const lastFrameAdvanced = frameAdvancedEvents[frameAdvancedEvents.length - 1];
-        duration = Math.floor((new Date(lastFrameAdvanced.timestamp).getTime() - new Date(gameStarted.timestamp).getTime()) / 1000);
+        const lastFrameAdvanced =
+          frameAdvancedEvents[frameAdvancedEvents.length - 1];
+        duration = Math.floor(
+          (new Date(lastFrameAdvanced.timestamp).getTime() -
+            new Date(gameStarted.timestamp).getTime()) /
+            1000
+        );
       } else {
         // Fallback: utiliser une approche plus intelligente pour les guess_submitted
         // Grouper les guess_submitted par frame et utiliser le dernier groupe
-        const guessEvents = events.filter(e => e.type === 'guess_submitted');
-        
+        const guessEvents = events.filter((e) => e.type === 'guess_submitted');
+
         if (guessEvents.length > 0) {
           // Trouver le dernier groupe de guesses (probablement la dernière frame active)
           const lastGuessEvent = guessEvents[guessEvents.length - 1];
-          
+
           // Ajouter un délai raisonnable pour la fin de la frame (par exemple 20 secondes)
-          const frameEndTime = new Date(lastGuessEvent.timestamp).getTime() + (20 * 1000);
-          duration = Math.floor((frameEndTime - new Date(gameStarted.timestamp).getTime()) / 1000);
+          const frameEndTime =
+            new Date(lastGuessEvent.timestamp).getTime() + 20 * 1000;
+          duration = Math.floor(
+            (frameEndTime - new Date(gameStarted.timestamp).getTime()) / 1000
+          );
         }
       }
     }
@@ -389,28 +426,32 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
   let globalAverageResponseTime = 0;
   if (guesses.length > 0) {
     const allResponseTimes: number[] = [];
-    
+
     for (const guessEvent of guesses) {
       const guessData = JSON.parse(guessEvent.data);
       const frameIndex = guessData.frameIndex;
-      
+
       // Trouver l'événement frame_started correspondant à cette frame
-      const frameStartedEvent = events.find(e => {
+      const frameStartedEvent = events.find((e) => {
         if (e.type === 'frame_started') {
           const frameData = JSON.parse(e.data);
           return frameData.frameIndex === frameIndex;
         }
         return false;
       });
-      
+
       if (frameStartedEvent) {
-        const responseTime = new Date(guessEvent.timestamp).getTime() - new Date(frameStartedEvent.timestamp).getTime();
+        const responseTime =
+          new Date(guessEvent.timestamp).getTime() -
+          new Date(frameStartedEvent.timestamp).getTime();
         allResponseTimes.push(responseTime);
       }
     }
-    
+
     if (allResponseTimes.length > 0) {
-      globalAverageResponseTime = allResponseTimes.reduce((sum, time) => sum + time, 0) / allResponseTimes.length;
+      globalAverageResponseTime =
+        allResponseTimes.reduce((sum, time) => sum + time, 0) /
+        allResponseTimes.length;
       // Convertir en secondes
       globalAverageResponseTime = Math.round(globalAverageResponseTime / 1000);
     }
@@ -430,7 +471,9 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
 }
 
 // Récupérer la timeline complète d'une partie
-export async function getGameTimeline(gameId: string): Promise<GameTimeline | null> {
+export async function getGameTimeline(
+  gameId: string
+): Promise<GameTimeline | null> {
   const game = await getGame(gameId);
   if (!game) return null;
 

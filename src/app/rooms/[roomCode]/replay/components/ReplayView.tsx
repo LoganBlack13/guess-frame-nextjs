@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Game } from '@/lib/database/types';
-import ReplayPlayer from '@/app/rooms/[roomCode]/replay/components/ReplayPlayer';
+import { useEffect, useState } from 'react';
+
 import GameList from '@/app/rooms/[roomCode]/replay/components/GameList';
 import GameStats from '@/app/rooms/[roomCode]/replay/components/GameStats';
+import ReplayPlayer from '@/app/rooms/[roomCode]/replay/components/ReplayPlayer';
+import { Game } from '@/lib/database/types';
 
 interface ReplayViewProps {
   roomCode: string;
@@ -12,16 +13,67 @@ interface ReplayViewProps {
   selectedGameId?: string;
 }
 
-export default function ReplayView({ roomCode, games, selectedGameId }: ReplayViewProps) {
+export default function ReplayView({
+  games,
+  selectedGameId,
+}: ReplayViewProps) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [replayData, setReplayData] = useState<any>(null);
+  const [replayData, setReplayData] = useState<{
+    gameId: string;
+    roomCode: string;
+    duration: number;
+    frames: Array<{
+      timestamp: Date;
+      frameIndex: number;
+      frameId: string;
+      movieTitle: string;
+      imageUrl: string;
+      events: Array<{
+        type: string;
+        data: Record<string, unknown>;
+        timestamp: Date;
+      }>;
+    }>;
+    players: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+      guesses: number;
+      correctGuesses: number;
+      accuracy: number;
+    }>;
+    stats: {
+      gameId: string;
+      roomCode: string;
+      duration: number;
+      totalFrames: number;
+      totalGuesses: number;
+      correctGuesses: number;
+      accuracy: number;
+      averageResponseTime: number;
+      playerStats: Array<{
+        playerId: string;
+        playerName: string;
+        score: number;
+        guesses: number;
+        correctGuesses: number;
+        accuracy: number;
+        averageResponseTime: number;
+      }>;
+    };
+    events: Array<{
+      type: string;
+      data: Record<string, unknown>;
+      timestamp: Date;
+    }>;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Sélectionner la première partie par défaut ou celle spécifiée
   useEffect(() => {
     if (selectedGameId) {
-      const game = games.find(g => g.id === selectedGameId);
+      const game = games.find((g) => g.id === selectedGameId);
       if (game) {
         setSelectedGame(game);
       }
@@ -42,7 +94,9 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
         const response = await fetch(`/api/games/${selectedGame.id}/replay`);
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`HTTP ${response.status}: ${errorText || 'Failed to load replay data'}`);
+          throw new Error(
+            `HTTP ${response.status}: ${errorText || 'Failed to load replay data'}`
+          );
         }
 
         const result = await response.json();
@@ -111,7 +165,7 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
           selectedGame={selectedGame}
           onGameSelect={handleGameSelect}
         />
-        
+
         {/* Statistiques de la partie */}
         {selectedGame && !loading && !error && (
           <GameStats game={selectedGame} />
@@ -128,8 +182,18 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
 
         {error && (
           <div className="alert alert-error">
-            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span>{error}</span>
           </div>
@@ -166,10 +230,7 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
 
             {/* Lecteur de replay */}
             {replayData && (
-              <ReplayPlayer
-                replayData={replayData}
-                game={selectedGame}
-              />
+              <ReplayPlayer replayData={replayData} game={selectedGame} />
             )}
           </div>
         )}

@@ -41,14 +41,24 @@ export interface GameFrame {
   createdAt: Date;
   game: Game;
   movie: Movie;
-  frame?: any; // Frame legacy optionnel
+  frame?: {
+    id: string;
+    movieTitle: string;
+    imageUrl: string;
+    createdAt: Date;
+  }; // Frame legacy optionnel
 }
 
 export interface GameEvent {
   id: string;
   gameId: string;
-  type: 'game_started' | 'frame_started' | 'guess_submitted' | 'frame_advanced' | 'game_completed';
-  data: any; // JSON data
+  type:
+    | 'game_started'
+    | 'frame_started'
+    | 'guess_submitted'
+    | 'frame_advanced'
+    | 'game_completed';
+  data: string; // JSON data as string
   timestamp: Date;
   game: Game;
 }
@@ -111,11 +121,11 @@ export interface GameCompletedEvent {
   };
 }
 
-export type GameEventData = 
-  | GameStartedEvent 
-  | FrameStartedEvent 
-  | GuessSubmittedEvent 
-  | FrameAdvancedEvent 
+export type GameEventData =
+  | GameStartedEvent
+  | FrameStartedEvent
+  | GuessSubmittedEvent
+  | FrameAdvancedEvent
   | GameCompletedEvent;
 
 // Types pour les statistiques de jeu

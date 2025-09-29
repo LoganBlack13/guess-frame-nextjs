@@ -1,7 +1,8 @@
 'use client';
 
-import PlayerAvatarSimple from './PlayerAvatarSimple';
 import { formatJoinedTime } from '@/lib/dateUtils';
+
+import PlayerAvatarSimple from './PlayerAvatarSimple';
 
 interface Player {
   id: string;
@@ -14,15 +15,13 @@ interface Player {
 interface PlayerListProps {
   players: Player[];
   currentPlayerId?: string | null;
-  currentFrameSolvedPlayerIds?: string[];
   className?: string;
 }
 
-export default function PlayerList({ 
-  players, 
+export default function PlayerList({
+  players,
   currentPlayerId,
-  currentFrameSolvedPlayerIds = [], 
-  className 
+  className,
 }: PlayerListProps) {
   const sortedPlayers = [...players].sort((a, b) => {
     // Host en premier, puis par ordre d'arrivée
@@ -32,20 +31,20 @@ export default function PlayerList({
   });
 
   return (
-    <div className={`card bg-base-200 shadow-xl h-full flex flex-col ${className}`}>
+    <div
+      className={`card bg-base-200 shadow-xl h-full flex flex-col ${className}`}
+    >
       <div className="card-body flex flex-col h-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="card-title">Players</h3>
-          <div className="badge badge-primary">
-            {players.length} joined
-          </div>
+          <div className="badge badge-primary">{players.length} joined</div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto space-y-2">
           {sortedPlayers.map((player) => {
             const isCurrentPlayer = player.id === currentPlayerId;
             const isHost = player.role === 'host';
-            
+
             return (
               <div
                 key={player.id}
@@ -60,12 +59,10 @@ export default function PlayerList({
                       isHost={isHost}
                       isCurrentPlayer={isCurrentPlayer}
                     />
-                    
+
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold">
-                          {player.name}
-                        </span>
+                        <span className="font-bold">{player.name}</span>
                         {isCurrentPlayer && (
                           <span className="badge badge-primary badge-sm">
                             YOU
@@ -77,7 +74,7 @@ export default function PlayerList({
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="text-sm opacity-70">
                         Joined {formatJoinedTime(player.joinedAt)}
                       </div>
@@ -87,13 +84,11 @@ export default function PlayerList({
               </div>
             );
           })}
-          
+
           {players.length === 1 && (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">🎬</div>
-              <p className="font-bold">
-                Waiting for players to join...
-              </p>
+              <p className="font-bold">Waiting for players to join...</p>
               <p className="text-sm opacity-70 mt-2">
                 Share the room code above to invite friends!
               </p>

@@ -1,4 +1,4 @@
-import { SelectHTMLAttributes, ReactNode } from 'react';
+import { ReactNode, SelectHTMLAttributes } from 'react';
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   children: ReactNode;
@@ -6,7 +6,12 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   onValueChange?: (value: string) => void;
 }
 
-export function Select({ children, className = '', onValueChange, ...props }: SelectProps) {
+export function Select({
+  children,
+  className = '',
+  onValueChange,
+  ...props
+}: SelectProps) {
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (onValueChange) {
       onValueChange(e.target.value);
@@ -17,7 +22,7 @@ export function Select({ children, className = '', onValueChange, ...props }: Se
   };
 
   return (
-    <select 
+    <select
       className={`select select-bordered w-full ${className}`}
       onChange={handleChange}
       {...props}

@@ -16,10 +16,10 @@ interface PlayersListProps {
   className?: string;
 }
 
-export default function PlayersList({ 
-  players, 
+export default function PlayersList({
+  players,
   currentPlayerId,
-  className 
+  className,
 }: PlayersListProps) {
   // Trier les joueurs par score décroissant
   const sortedPlayers = [...players].sort((a, b) => {
@@ -38,13 +38,13 @@ export default function PlayersList({
     <div className={`card bg-base-200 shadow-xl ${className}`}>
       <div className="card-body">
         <h3 className="card-title text-lg mb-4">Other Players</h3>
-        
+
         <div className="space-y-2">
           {remainingPlayers.map((player, index) => {
             const isCurrentPlayer = player.id === currentPlayerId;
             const isHost = player.role === 'host';
             const globalRank = index + 4; // Commence à 4 car on a déjà les 3 premiers
-            
+
             return (
               <div
                 key={player.id}
@@ -60,7 +60,7 @@ export default function PlayersList({
                         #{globalRank}
                       </span>
                     </div>
-                    
+
                     {/* Avatar */}
                     <div className="flex-shrink-0">
                       <PlayerAvatarSimple
@@ -69,13 +69,11 @@ export default function PlayersList({
                         isCurrentPlayer={isCurrentPlayer}
                       />
                     </div>
-                    
+
                     {/* Informations du joueur */}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold">
-                          {player.name}
-                        </span>
+                        <span className="font-bold">{player.name}</span>
                         {isCurrentPlayer && (
                           <span className="badge badge-primary badge-sm">
                             YOU
@@ -88,7 +86,7 @@ export default function PlayersList({
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Score */}
                     <div className="flex-shrink-0 text-right">
                       <div className="text-xl font-bold text-primary">

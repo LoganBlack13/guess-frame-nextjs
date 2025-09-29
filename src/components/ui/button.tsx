@@ -1,4 +1,4 @@
-import { ReactNode, ButtonHTMLAttributes } from 'react';
+import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -7,30 +7,30 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
 }
 
-export function Button({ 
-  children, 
-  variant = 'default', 
-  size = 'default', 
+export function Button({
+  children,
+  variant = 'default',
+  size = 'default',
   className = '',
-  ...props 
+  ...props
 }: ButtonProps) {
   const baseClasses = 'btn';
-  
+
   const variantClasses = {
     default: 'btn-primary',
     outline: 'btn-outline',
     ghost: 'btn-ghost',
-    destructive: 'btn-error'
+    destructive: 'btn-error',
   };
-  
+
   const sizeClasses = {
     sm: 'btn-sm',
     default: '',
-    lg: 'btn-lg'
+    lg: 'btn-lg',
   };
-  
+
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
-  
+
   return (
     <button className={classes} {...props}>
       {children}

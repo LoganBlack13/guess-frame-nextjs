@@ -17,11 +17,11 @@ interface PlayerListGameProps {
   className?: string;
 }
 
-export default function PlayerListGame({ 
-  players, 
+export default function PlayerListGame({
+  players,
   currentPlayerId,
-  currentFrameSolvedPlayerIds = [], 
-  className 
+  currentFrameSolvedPlayerIds = [],
+  className,
 }: PlayerListGameProps) {
   const sortedPlayers = [...players].sort((a, b) => {
     // Host en premier, puis par score décroissant
@@ -36,23 +36,23 @@ export default function PlayerListGame({
       <div className="card-body p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="card-title text-lg">Players</h3>
-          <div className="badge badge-primary">
-            {players.length} joined
-          </div>
+          <div className="badge badge-primary">{players.length} joined</div>
         </div>
-        
+
         <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
           {sortedPlayers.map((player) => {
             const isCurrentPlayer = player.id === currentPlayerId;
             const isHost = player.role === 'host';
-            const hasSolvedCurrentFrame = currentFrameSolvedPlayerIds.includes(player.id);
-            
+            const hasSolvedCurrentFrame = currentFrameSolvedPlayerIds.includes(
+              player.id
+            );
+
             return (
               <div
                 key={player.id}
                 className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 ${
-                  hasSolvedCurrentFrame 
-                    ? 'bg-success/20 border-2 border-success shadow-lg scale-105' 
+                  hasSolvedCurrentFrame
+                    ? 'bg-success/20 border-2 border-success shadow-lg scale-105'
                     : 'bg-base-100 border border-base-300'
                 } ${isCurrentPlayer ? 'ring-2 ring-primary' : ''} ${
                   isHost ? 'ring-2 ring-warning' : ''
@@ -70,24 +70,18 @@ export default function PlayerListGame({
                     </div>
                   )}
                 </div>
-                
+
                 <div className="text-center">
                   <div className="flex items-center gap-1 mb-1">
-                    <span className="font-bold text-sm">
-                      {player.name}
-                    </span>
+                    <span className="font-bold text-sm">{player.name}</span>
                     {isCurrentPlayer && (
-                      <span className="badge badge-primary badge-xs">
-                        YOU
-                      </span>
+                      <span className="badge badge-primary badge-xs">YOU</span>
                     )}
                     {isHost && (
-                      <span className="badge badge-warning badge-xs">
-                        HOST
-                      </span>
+                      <span className="badge badge-warning badge-xs">HOST</span>
                     )}
                   </div>
-                  
+
                   <div className="text-lg font-bold text-primary">
                     {player.score}
                   </div>

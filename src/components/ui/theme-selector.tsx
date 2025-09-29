@@ -18,11 +18,14 @@ export default function ThemeSelector() {
     <div className="dropdown dropdown-end">
       <div tabIndex={0} role="button" className="btn btn-ghost btn-sm">
         <span className="text-lg">
-          {themes.find(t => t.value === theme)?.icon || '🎨'}
+          {themes.find((t) => t.value === theme)?.icon || '🎨'}
         </span>
         <span className="hidden sm:inline ml-1">Theme</span>
       </div>
-      <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+      <ul
+        tabIndex={0}
+        className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+      >
         {themes.map((themeOption) => (
           <li key={themeOption.value}>
             <button

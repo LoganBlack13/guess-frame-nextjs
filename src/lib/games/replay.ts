@@ -1,6 +1,5 @@
-import { getGameTimeline, getGameStats } from '../database/games';
-import { GameTimeline, GameStats } from '../database/types';
-import { GameEventManager } from './events';
+import { getGameTimeline } from '../database/games';
+import { GameTimeline } from '../database/types';
 
 export interface ReplayOptions {
   speed: number; // Multiplicateur de vitesse (1 = normale, 2 = 2x, 0.5 = 0.5x)
@@ -18,7 +17,7 @@ export interface ReplayFrame {
   imageUrl: string;
   events: Array<{
     type: string;
-    data: any;
+    data: Record<string, unknown>;
     timestamp: Date;
   }>;
 }
@@ -41,7 +40,7 @@ export interface ReplayData {
   stats: GameStats;
   events: Array<{
     type: string;
-    data: any;
+    data: Record<string, unknown>;
     timestamp: Date;
   }>;
 }
@@ -97,7 +96,7 @@ export class GameReplay {
   }
 
   // Filtre les événements selon les options
-  private filterEvents(events: any[]) {
+  private filterEvents(events: Array<{ type: string; data: string; timestamp: Date }>) {
     return events.filter(event => {
       // Inclure les événements spécifiés
       if (this.options.includeEvents && !this.options.includeEvents.includes(event.type)) {
@@ -123,7 +122,7 @@ export class GameReplay {
   }
 
   // Crée les frames de replay
-  private createReplayFrames(frames: any[], events: any[]): ReplayFrame[] {
+  private createReplayFrames(frames: Array<{ id: string; movie: { title: string }; imageUrl: string; createdAt: Date }>, events: Array<{ type: string; data: string; timestamp: Date }>): ReplayFrame[] {
     return frames.map((frame, index) => {
       // Trouver les événements liés à cette frame
       const frameEvents = events.filter(event => {
@@ -204,23 +203,3 @@ export class GameReplay {
   }
 }
 
-// Fonctions utilitaires pour les replays
-export class ReplayUtils {
-  // Récupère tous les replays d'une salle
-  static async getRoomReplays(roomCode: string): Promise<GameReplay[]> {
-    // TODO: Implémenter la récupération des replays d'une salle
-    return [];
-  }
-
-  // Récupère les replays récents
-  static async getRecentReplays(limit: number = 10): Promise<GameReplay[]> {
-    // TODO: Implémenter la récupération des replays récents
-    return [];
-  }
-
-  // Supprime un replay
-  static async deleteReplay(gameId: string): Promise<boolean> {
-    // TODO: Implémenter la suppression d'un replay
-    return false;
-  }
-}

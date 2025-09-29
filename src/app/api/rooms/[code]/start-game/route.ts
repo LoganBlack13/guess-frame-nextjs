@@ -1,11 +1,12 @@
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import { QuizGenerator } from "@/lib/games";
-import { createGame, addGameFrames } from "@/lib/database";
-import { GameEventManager } from "@/lib/games";
-import { HOST_SESSION_COOKIE } from "@/lib/session";
-import { updateRoomStatus } from "@/lib/rooms";
-import { prisma } from "@/lib/prisma";
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+import { addGameFrames, createGame } from '@/lib/database';
+import { QuizGenerator } from '@/lib/games';
+import { GameEventManager } from '@/lib/games';
+import { prisma } from '@/lib/prisma';
+import { updateRoomStatus } from '@/lib/rooms';
+import { HOST_SESSION_COOKIE } from '@/lib/session';
 
 interface Params {
   params: Promise<{
@@ -24,22 +25,31 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const resolvedParams = await params;
     const roomCode = resolvedParams.code.trim();
-    
+
     if (!roomCode) {
-      return NextResponse.json({ error: "Room code required" }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Room code required' },
+        { status: 400 }
+      );
     }
 
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get(HOST_SESSION_COOKIE)?.value;
-    
+
     if (!sessionToken) {
-      return NextResponse.json({ error: "Host session required" }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Host session required' },
+        { status: 401 }
+      );
     }
 
     const settings: StartGameSettings = await request.json();
-    
+
     if (!process.env.TMDB_API_KEY) {
-      return NextResponse.json({ error: "TMDB API key not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: 'TMDB API key not configured' },
+        { status: 500 }
+      );
     }
 
     console.log('🎮 Starting game generation for room:', roomCode);
@@ -47,8 +57,13 @@ export async function POST(request: Request, { params }: Params) {
 
     // Calculer le nombre de frames basé sur la durée et la difficulté
     const { calculateFrameCount } = await import('@/lib/types/difficulty');
-    const frameCount = calculateFrameCount(settings.durationMinutes, settings.difficulty);
-    const { secondsPerFrame } = await import('@/lib/types/difficulty').then(m => m.getDifficultyConfig(settings.difficulty));
+    const frameCount = calculateFrameCount(
+      settings.durationMinutes,
+      settings.difficulty
+    );
+    const { secondsPerFrame } = await import('@/lib/types/difficulty').then(
+      (m) => m.getDifficultyConfig(settings.difficulty)
+    );
 
     console.log(`📊 Calculated frame count: ${frameCount} frames`);
 
@@ -59,12 +74,12 @@ export async function POST(request: Request, { params }: Params) {
       frameCount,
       difficulty: settings.difficulty,
       genres: settings.genres,
-      yearRange: settings.yearRange
+      yearRange: settings.yearRange,
     });
 
     console.log('✅ Quiz generated from database:', {
       totalFrames: quizResult.totalFrames,
-      totalMovies: quizResult.totalMovies
+      totalMovies: quizResult.totalMovies,
     });
 
     // Créer ou récupérer la partie
@@ -85,7 +100,9 @@ export async function POST(request: Request, { params }: Params) {
       );
       console.log(`🎬 Created ${quizResult.frames.length} GameFrames`);
     } else if (game.gameFrames.length > 0) {
-      console.log(`🎬 GameFrames already exist (${game.gameFrames.length} frames)`);
+      console.log(
+        `🎬 GameFrames already exist (${game.gameFrames.length} frames)`
+      );
     }
 
     // Enregistrer l'événement de génération
@@ -108,7 +125,10 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     // Mettre à jour les paramètres de la salle avec la difficulté et durée choisies
-    console.log('🔄 Updating room settings with difficulty:', settings.difficulty);
+    console.log(
+      '🔄 Updating room settings with difficulty:',
+      settings.difficulty
+    );
     await prisma.room.update({
       where: { code: roomCode },
       data: {
@@ -116,28 +136,33 @@ export async function POST(request: Request, { params }: Params) {
         durationMinutes: settings.durationMinutes,
         guessWindowSeconds: secondsPerFrame,
         targetFrameCount: frameCount,
-        currentFrameIndex: 0
-      }
+        currentFrameIndex: 0,
+      },
     });
     console.log('✅ Room settings updated');
 
     // Mettre à jour le statut de la salle pour passer en "in-progress"
-    const updatedRoom = await updateRoomStatus(roomCode, "in-progress", sessionToken);
+    const updatedRoom = await updateRoomStatus(
+      roomCode,
+      'in-progress',
+      sessionToken
+    );
 
     console.log('✅ Game setup completed successfully');
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       gameId: game.id,
       frameCount: quizResult.totalFrames,
       movieCount: quizResult.totalMovies,
-      room: updatedRoom
+      room: updatedRoom,
     });
-    
   } catch (error) {
     console.error('❌ Failed to start game:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to start game' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to start game',
+      },
       { status: 500 }
     );
   }

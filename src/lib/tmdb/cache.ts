@@ -1,4 +1,4 @@
-import { MovieMetadata, MovieFrame } from './types';
+import { MovieFrame, MovieMetadata } from './types';
 
 // Cache en mémoire pour les métadonnées des films
 class TMDBMemoryCache {
@@ -11,10 +11,10 @@ class TMDBMemoryCache {
   // Vérifie si un film est en cache et non expiré
   isMovieCached(movieId: number): boolean {
     if (!this.movieCache.has(movieId)) return false;
-    
+
     const timestamp = this.cacheTimestamps.get(movieId);
     if (!timestamp) return false;
-    
+
     return Date.now() - timestamp < this.cacheExpiry;
   }
 
@@ -24,7 +24,7 @@ class TMDBMemoryCache {
       this.removeMovie(movieId);
       return null;
     }
-    
+
     return this.movieCache.get(movieId) || null;
   }
 
@@ -34,7 +34,7 @@ class TMDBMemoryCache {
     if (this.movieCache.size >= this.maxCacheSize) {
       this.cleanupOldEntries();
     }
-    
+
     this.movieCache.set(movieId, movie);
     this.cacheTimestamps.set(movieId, Date.now());
   }
@@ -45,7 +45,7 @@ class TMDBMemoryCache {
       this.removeMovie(movieId);
       return null;
     }
-    
+
     return this.framesCache.get(movieId) || null;
   }
 
@@ -54,7 +54,7 @@ class TMDBMemoryCache {
     if (!this.isMovieCached(movieId)) {
       return; // Ne pas mettre en cache si le film n'est pas en cache
     }
-    
+
     this.framesCache.set(movieId, frames);
   }
 
@@ -69,23 +69,23 @@ class TMDBMemoryCache {
   private cleanupOldEntries(): void {
     const now = Date.now();
     const toRemove: number[] = [];
-    
+
     for (const [movieId, timestamp] of this.cacheTimestamps) {
       if (now - timestamp > this.cacheExpiry) {
         toRemove.push(movieId);
       }
     }
-    
+
     // Supprimer les 20% les plus anciens
     const sortedEntries = Array.from(this.cacheTimestamps.entries())
       .sort((a, b) => a[1] - b[1])
       .slice(0, Math.floor(this.maxCacheSize * 0.2));
-    
+
     for (const [movieId] of sortedEntries) {
       toRemove.push(movieId);
     }
-    
-    toRemove.forEach(movieId => this.removeMovie(movieId));
+
+    toRemove.forEach((movieId) => this.removeMovie(movieId));
   }
 
   // Vide tout le cache
@@ -104,7 +104,7 @@ class TMDBMemoryCache {
     return {
       movieCount: this.movieCache.size,
       framesCount: this.framesCache.size,
-      memoryUsage: JSON.stringify(Array.from(this.movieCache.values())).length
+      memoryUsage: JSON.stringify(Array.from(this.movieCache.values())).length,
     };
   }
 }

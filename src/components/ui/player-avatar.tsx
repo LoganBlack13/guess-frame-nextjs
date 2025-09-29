@@ -9,20 +9,25 @@ interface PlayerAvatarProps {
   className?: string;
 }
 
-export function PlayerAvatar({ name, score, isCorrect = false, className }: PlayerAvatarProps) {
+export function PlayerAvatar({
+  name,
+  score,
+  isCorrect = false,
+  className,
+}: PlayerAvatarProps) {
   const initials = name
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase())
+    .map((word) => word.charAt(0).toUpperCase())
     .join('')
     .slice(0, 2);
 
-
   return (
-    <div className={cn("relative flex flex-col items-center gap-2", className)}>
-      <div 
+    <div className={cn('relative flex flex-col items-center gap-2', className)}>
+      <div
         className={cn(
-          "relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content font-bold text-lg transition-all duration-300",
-          isCorrect && "ring-4 ring-green-400 ring-opacity-75 shadow-lg shadow-green-400/50"
+          'relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-content font-bold text-lg transition-all duration-300',
+          isCorrect &&
+            'ring-4 ring-green-400 ring-opacity-75 shadow-lg shadow-green-400/50'
         )}
       >
         {initials}

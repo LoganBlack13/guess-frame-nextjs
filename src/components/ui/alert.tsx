@@ -11,31 +11,26 @@ interface AlertDescriptionProps {
   className?: string;
 }
 
-export function Alert({ 
-  children, 
-  variant = 'default', 
-  className = '' 
+export function Alert({
+  children,
+  variant = 'default',
+  className = '',
 }: AlertProps) {
   const baseClasses = 'alert';
-  
+
   const variantClasses = {
     default: 'alert-info',
-    destructive: 'alert-error'
+    destructive: 'alert-error',
   };
-  
+
   const classes = `${baseClasses} ${variantClasses[variant]} ${className}`;
-  
-  return (
-    <div className={classes}>
-      {children}
-    </div>
-  );
+
+  return <div className={classes}>{children}</div>;
 }
 
-export function AlertDescription({ children, className = '' }: AlertDescriptionProps) {
-  return (
-    <span className={className}>
-      {children}
-    </span>
-  );
+export function AlertDescription({
+  children,
+  className = '',
+}: AlertDescriptionProps) {
+  return <span className={className}>{children}</span>;
 }

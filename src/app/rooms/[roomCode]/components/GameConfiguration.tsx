@@ -1,19 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Settings, 
-  Clock, 
-  Target, 
-  Film, 
-  Calendar,
-  Tag,
   Loader2,
   CheckCircle,
   AlertCircle
@@ -70,6 +59,7 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
   const [error, setError] = useState<string | null>(null);
 
   const calculateFrameCount = () => {
+    // Import dynamique pour éviter les erreurs de build
     const { calculateFrameCount } = require('@/lib/types/difficulty');
     return calculateFrameCount(settings.durationMinutes, settings.difficulty);
   };
@@ -114,7 +104,7 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
             <select
               className="select select-bordered w-full"
               value={settings.difficulty}
-              onChange={(e) => setSettings(prev => ({ ...prev, difficulty: e.target.value as any }))}
+              onChange={(e) => setSettings(prev => ({ ...prev, difficulty: e.target.value as 'easy' | 'normal' | 'hard' }))}
               disabled={isGenerating}
             >
               {DIFFICULTY_OPTIONS.map(option => (

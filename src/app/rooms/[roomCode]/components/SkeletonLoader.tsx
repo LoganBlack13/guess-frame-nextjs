@@ -6,10 +6,10 @@ interface SkeletonLoaderProps {
   className?: string;
 }
 
-export default function SkeletonLoader({ 
-  type = 'card', 
-  count = 1, 
-  className = '' 
+export default function SkeletonLoader({
+  type = 'card',
+  count = 1,
+  className = '',
 }: SkeletonLoaderProps) {
   const renderSkeleton = () => {
     switch (type) {
@@ -23,12 +23,15 @@ export default function SkeletonLoader({
             </div>
           </div>
         );
-      
+
       case 'list':
         return (
           <div className="space-y-3">
             {Array.from({ length: count }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 border border-base-300 bg-base-100 rounded-lg animate-pulse">
+              <div
+                key={i}
+                className="flex items-center gap-3 p-4 border border-base-300 bg-base-100 rounded-lg animate-pulse"
+              >
                 <div className="w-10 h-10 bg-base-300 rounded-full"></div>
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-base-300 rounded w-1/3"></div>
@@ -39,7 +42,7 @@ export default function SkeletonLoader({
             ))}
           </div>
         );
-      
+
       case 'frame':
         return (
           <div className="card border border-base-300 bg-base-200 shadow-md animate-pulse">
@@ -57,12 +60,15 @@ export default function SkeletonLoader({
             </div>
           </div>
         );
-      
+
       case 'player':
         return (
           <div className="grid gap-3 md:grid-cols-2">
             {Array.from({ length: count }).map((_, i) => (
-              <div key={i} className="rounded-lg border border-base-300 bg-base-100 p-4 animate-pulse">
+              <div
+                key={i}
+                className="rounded-lg border border-base-300 bg-base-100 p-4 animate-pulse"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="h-5 bg-base-300 rounded w-1/3"></div>
                   <div className="flex gap-2">
@@ -75,7 +81,7 @@ export default function SkeletonLoader({
             ))}
           </div>
         );
-      
+
       default:
         return <div className="h-4 bg-base-300 rounded animate-pulse"></div>;
     }
@@ -84,9 +90,7 @@ export default function SkeletonLoader({
   return (
     <div className={className}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i}>
-          {renderSkeleton()}
-        </div>
+        <div key={i}>{renderSkeleton()}</div>
       ))}
     </div>
   );

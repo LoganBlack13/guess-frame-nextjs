@@ -7,8 +7,7 @@ import type {
   Room as PrismaRoom,
 } from "@prisma/client";
 import { prisma } from "./prisma";
-import { publishRoomUpdate, publishPartyRedirect, publishPartyCountdown } from "./roomEvents";
-import type { MovieFrame } from './tmdb/types';
+import { broadcastRoomUpdate, broadcastPartyRedirect, broadcastPartyCountdown } from "./socket";
 
 export type PlayerRole = "host" | "guest";
 export type RoomStatus = "lobby" | "in-progress" | "completed";
@@ -57,7 +56,6 @@ const MAX_ROOM_SIZE = 12;
 const DEFAULT_DIFFICULTY: GameDifficulty = "normal";
 const DEFAULT_DURATION_MINUTES = 10;
 const ALLOWED_DURATIONS = new Set([5, 10, 15]);
-const QUIZ_GENERATOR_ID = "quiz-generator";
 const defaultRoomInclude = {
   players: true,
   guesses: true,
@@ -84,14 +82,6 @@ const defaultRoomInclude = {
   },
 } as const;
 
-function shuffleArray<T>(values: T[]): T[] {
-  const copy = [...values];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
 
 
 
@@ -350,7 +340,6 @@ export async function createRoom(hostName: string): Promise<CreateRoomResult> {
             name: trimmedName,
             role: "host",
             joinedAt: now,
-            lastSeenAt: now,
             sessionToken,
             score: 0,
           },
@@ -380,7 +369,7 @@ export async function createRoom(hostName: string): Promise<CreateRoomResult> {
   const room = toRoom(refreshedRoom);
   const host = toPlayer(hostPlayer);
 
-  publishRoomUpdate(room);
+  broadcastRoomUpdate(room.code, room);
 
   return { room, host, sessionToken };
 }
@@ -414,44 +403,7 @@ export async function joinRoom(
       throw new Error("This match has already started. Ask the host for a fresh room.");
     }
 
-    // Vérifier s'il y a un joueur inactif avec le même nom
-    const inactivePlayer = existingRoom.players.find(
-      p => p.name === trimmedName && p.role === "guest"
-    );
-
-    if (inactivePlayer) {
-      // Réactiver le joueur existant
-      const now = new Date();
-      const reactivatedPlayer = await tx.player.update({
-        where: { id: inactivePlayer.id },
-        data: {
-          lastSeenAt: now,
-          // Garder le score existant
-        },
-      });
-
-      const refreshedRoom = await tx.room.findUnique({
-        where: { code: existingRoom.code },
-        include: defaultRoomInclude,
-      });
-
-      if (!refreshedRoom) {
-        throw new Error("Room not found after reactivation");
-      }
-
-      return {
-        room: refreshedRoom,
-        player: reactivatedPlayer,
-      };
-    }
-
-    // Vérifier la capacité de la room (seulement les joueurs actifs)
-    const activePlayers = existingRoom.players.filter(p => {
-      const timeSinceLastSeen = Date.now() - p.lastSeenAt.getTime();
-      return timeSinceLastSeen < 30000; // 30 secondes d'inactivité
-    });
-
-    if (activePlayers.length >= MAX_ROOM_SIZE) {
+    if (existingRoom.players.length >= MAX_ROOM_SIZE) {
       throw new Error("Room is at capacity. Check with the host for another code.");
     }
 
@@ -464,7 +416,6 @@ export async function joinRoom(
         name: trimmedName,
         role: "guest",
         joinedAt: now,
-        lastSeenAt: now,
         roomCode: existingRoom.code,
         score: 0,
       },
@@ -486,7 +437,8 @@ export async function joinRoom(
   });
 
   const room = toRoom(result.room);
-  publishRoomUpdate(room);
+  broadcastRoomUpdate(roomCode, room);
+
 
   return {
     room,
@@ -505,20 +457,7 @@ export async function getRoom(roomCode: string): Promise<Room | undefined> {
 
   if (!room) return undefined;
 
-  // Filtrer les joueurs inactifs (plus de 30 secondes d'inactivité)
-  const cutoffTime = new Date(Date.now() - 30000);
-  const activePlayers = room.players.filter(player => {
-    if (player.role === "host") return true; // Toujours garder l'hôte
-    return player.lastSeenAt > cutoffTime;
-  });
-
-  // Créer une room avec seulement les joueurs actifs
-  const roomWithActivePlayers = {
-    ...room,
-    players: activePlayers,
-  };
-
-  return toRoom(roomWithActivePlayers);
+  return toRoom(room);
 }
 
 export async function removePlayer(roomCode: string, playerId: string): Promise<void> {
@@ -561,55 +500,10 @@ export async function removePlayer(roomCode: string, playerId: string): Promise<
   });
 
   if (snapshot) {
-    publishRoomUpdate(snapshot);
+    broadcastRoomUpdate(roomCode, snapshot);
   }
 }
 
-export async function cleanupInactivePlayers(roomCode: string): Promise<void> {
-  const trimmedCode = roomCode.trim();
-  if (!trimmedCode) return;
-
-  const cutoffTime = new Date(Date.now() - 30000); // 30 secondes d'inactivité
-
-  let snapshot: Room | undefined;
-
-  await prisma.$transaction(async (tx) => {
-    // Supprimer les joueurs inactifs (sauf l'hôte)
-    const deleted = await tx.player.deleteMany({
-      where: {
-        roomCode: trimmedCode,
-        role: "guest",
-        lastSeenAt: {
-          lt: cutoffTime,
-        },
-      },
-    });
-
-    if (deleted.count === 0) {
-      return;
-    }
-
-    const remaining = await tx.player.count({ where: { roomCode: trimmedCode } });
-    if (remaining === 0) {
-      await tx.room.delete({ where: { code: trimmedCode } });
-      snapshot = undefined;
-      return;
-    }
-
-    const roomRecord = await tx.room.findUnique({
-      where: { code: trimmedCode },
-      include: defaultRoomInclude,
-    });
-
-    if (roomRecord) {
-      snapshot = toRoom(roomRecord);
-    }
-  });
-
-  if (snapshot) {
-    publishRoomUpdate(snapshot);
-  }
-}
 
 export async function updateRoomStatus(
   roomCode: string,
@@ -649,7 +543,7 @@ export async function updateRoomStatus(
 
     if (normalizedStatus === "in-progress") {
       // Check for game frames instead of static frames
-      if (!room.game || !(room.game as any).gameFrames || (room.game as any).gameFrames.length === 0) {
+      if (!room.game || !room.game.gameFrames || room.game.gameFrames.length === 0) {
         throw new Error("Add at least one frame before starting the match.");
       }
       updateData.roundStartedAt = now;
@@ -681,29 +575,29 @@ export async function updateRoomStatus(
   });
 
   const normalizedRoom = toRoom(result);
-  publishRoomUpdate(normalizedRoom);
+  broadcastRoomUpdate(roomCode, normalizedRoom);
   
   // If we start the game, trigger the redirection and countdown
   if (normalizedStatus === "in-progress") {
-    console.log('🔄 Publishing party redirect event for room:', normalizedRoom.code);
-    // Publish the redirection event immediately
-    publishPartyRedirect(normalizedRoom);
+    console.log('🔄 Broadcasting party redirect event for room:', normalizedRoom.code);
+    // Broadcast the redirection event immediately
+    broadcastPartyRedirect(roomCode, normalizedRoom);
     
     console.log('⏰ Starting countdown for room:', normalizedRoom.code);
     // Start the 5 second countdown
     let countdown = 5;
-    publishPartyCountdown(normalizedRoom, countdown);
+    broadcastPartyCountdown(roomCode, normalizedRoom, countdown);
     
     const countdownInterval = setInterval(() => {
       countdown--;
       console.log(`⏰ Countdown for room ${normalizedRoom.code}: ${countdown}`);
       if (countdown > 0) {
-        publishPartyCountdown(normalizedRoom, countdown);
+        broadcastPartyCountdown(roomCode, normalizedRoom, countdown);
       } else {
         clearInterval(countdownInterval);
         console.log('🎮 Game starting now for room:', normalizedRoom.code);
         // The game starts now - frameStartedAt is already configured
-        publishRoomUpdate(normalizedRoom);
+        broadcastRoomUpdate(roomCode, normalizedRoom);
       }
     }, 1000);
   }
@@ -787,7 +681,7 @@ export async function addFrame(
   });
 
   const normalizedRoom = toRoom(result.room);
-  publishRoomUpdate(normalizedRoom);
+  broadcastRoomUpdate(roomCode, normalizedRoom);
 
   return toFrame({ ...result.frame, guesses: [] });
 }
@@ -891,7 +785,7 @@ export async function updateRoomSettings(
   });
 
   const normalizedRoom = toRoom(result);
-  publishRoomUpdate(normalizedRoom);
+  broadcastRoomUpdate(roomCode, normalizedRoom);
   return normalizedRoom;
 }
 
@@ -928,7 +822,7 @@ export async function advanceFrame(
     }
 
     // Use GameFrames instead of static frames
-    const totalFrames = (room.game as any)?.gameFrames?.length || 0;
+    const totalFrames = room.game?.gameFrames?.length || 0;
     if (totalFrames === 0) {
       throw new Error("No game frames available for advancing.");
     }
@@ -946,7 +840,7 @@ export async function advanceFrame(
       
       // Terminer la partie si elle existe et enregistrer l'événement game_completed
       if (room.game) {
-        await (tx as any).game.update({
+        await tx.game.update({
           where: { id: room.game.id },
           data: {
             status: 'completed',
@@ -955,7 +849,7 @@ export async function advanceFrame(
         });
         
         // Enregistrer l'événement de fin
-        const gameStartedEvent = await (tx as any).gameEvent.findFirst({
+        const gameStartedEvent = await tx.gameEvent.findFirst({
           where: { gameId: room.game.id, type: 'game_started' },
           orderBy: { timestamp: 'asc' }
         });
@@ -964,14 +858,14 @@ export async function advanceFrame(
           ? Math.floor((now.getTime() - new Date(gameStartedEvent.timestamp).getTime()) / 1000)
           : 0;
         
-        await (tx as any).gameEvent.create({
+        await tx.gameEvent.create({
           data: {
             gameId: room.game.id,
             type: 'game_completed',
             data: JSON.stringify({
               totalFrames: effectiveTarget,
-              totalGuesses: 0, // TODO: Calculer le nombre total de tentatives
-              correctGuesses: 0, // TODO: Calculer le nombre de bonnes réponses
+              totalGuesses: room.players.reduce((sum, p) => sum + p.score, 0),
+              correctGuesses: room.players.reduce((sum, p) => sum + p.score, 0),
               playerScores: room.players.map(p => ({ playerId: p.id, playerName: p.name, score: p.score })),
               duration: actualDuration,
             }),
@@ -983,9 +877,9 @@ export async function advanceFrame(
       updateData.frameStartedAt = now;
       
       // Enregistrer l'événement de démarrage de la nouvelle frame
-      if (room.game && (room.game as any)?.gameFrames?.[nextIndex]) {
-        const gameFrame = (room.game as any).gameFrames[nextIndex];
-        await (tx as any).gameEvent.create({
+      if (room.game && room.game.gameFrames?.[nextIndex]) {
+        const gameFrame = room.game.gameFrames[nextIndex];
+        await tx.gameEvent.create({
           data: {
             gameId: room.game.id,
             type: 'frame_started',
@@ -1018,7 +912,7 @@ export async function advanceFrame(
   });
 
   const normalizedRoom = toRoom(result);
-  publishRoomUpdate(normalizedRoom);
+  broadcastRoomUpdate(roomCode, normalizedRoom);
   return normalizedRoom;
 }
 
@@ -1072,7 +966,7 @@ export async function submitGuess(
     }
 
     // Check if there are GameFrames available
-    const hasGameFrames = (room.game as any)?.gameFrames?.length > 0;
+    const hasGameFrames = room.game?.gameFrames?.length ?? 0 > 0;
     
     if (!hasGameFrames) {
       throw new Error("No game frames available. Start a new game first.");
@@ -1080,7 +974,7 @@ export async function submitGuess(
 
     // Use GameFrames (all quizzes now come from database)
     const currentFrameIndex = room.currentFrameIndex;
-    const gameFrames = (room.game as any)?.gameFrames || [];
+    const gameFrames = room.game?.gameFrames || [];
     const currentFrame = gameFrames[currentFrameIndex];
     
     if (process.env.NODE_ENV === 'development') {
@@ -1089,13 +983,13 @@ export async function submitGuess(
       console.log('  Current frame index:', currentFrameIndex);
       console.log('  Total GameFrames available:', gameFrames.length);
       console.log('  Room currentFrameIndex from DB:', room.currentFrameIndex);
-      console.log('  Game ID:', (room.game as any)?.id);
-      console.log('  GameFrames count:', (room.game as any)?.gameFrames?.length);
+      console.log('  Game ID:', room.game?.id);
+      console.log('  GameFrames count:', room.game?.gameFrames?.length);
 
       console.log('🎯 Frame Index Debug:');
       console.log('  Current frame index:', currentFrameIndex);
       console.log('  Total frames available:', gameFrames.length);
-      console.log('  All frames:', gameFrames.map((f: any, i: number) => ({ index: i, title: f.movie.title, id: f.id })));
+      console.log('  All frames:', gameFrames.map((f, i: number) => ({ index: i, title: f.movie.title, id: f.id })));
       console.log('  Frame at current index:', currentFrame ? { title: currentFrame.movie.title, id: currentFrame.id } : 'NO FRAME');
     }
 
@@ -1105,9 +999,9 @@ export async function submitGuess(
 
     // Check if already solved using GameEvents
     let alreadySolved = false;
-    const game = room.game as any;
+    const game = room.game;
     if (game && game.id) {
-      const gameEvent = await (tx as any).gameEvent.findFirst({
+      const gameEvent = await tx.gameEvent.findFirst({
         where: {
           gameId: game.id,
           type: "guess_submitted",
@@ -1147,7 +1041,7 @@ export async function submitGuess(
 
     // Record guess in GameEvents
     if (game && game.id) {
-      await (tx as any).gameEvent.create({
+      await tx.gameEvent.create({
         data: {
           gameId: game.id,
           type: "guess_submitted",
@@ -1189,7 +1083,7 @@ export async function submitGuess(
   });
 
   const normalizedRoom = toRoom(result.room);
-  publishRoomUpdate(normalizedRoom);
+  broadcastRoomUpdate(roomCode, normalizedRoom);
 
   return {
     room: normalizedRoom,

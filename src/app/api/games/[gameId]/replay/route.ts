@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { GameReplay } from '@/lib/games/replay';
-import { getGameTimeline } from '@/lib/database/games';
 
 export async function GET(
   request: NextRequest,
@@ -9,13 +9,19 @@ export async function GET(
   try {
     const { gameId } = await params;
     const { searchParams } = new URL(request.url);
-    
+
     // Paramètres de replay
     const speed = parseFloat(searchParams.get('speed') || '1');
-    const startTime = searchParams.get('startTime') ? new Date(searchParams.get('startTime')!) : undefined;
-    const endTime = searchParams.get('endTime') ? new Date(searchParams.get('endTime')!) : undefined;
-    const includeEvents = searchParams.get('includeEvents')?.split(',') || undefined;
-    const excludeEvents = searchParams.get('excludeEvents')?.split(',') || undefined;
+    const startTime = searchParams.get('startTime')
+      ? new Date(searchParams.get('startTime')!)
+      : undefined;
+    const endTime = searchParams.get('endTime')
+      ? new Date(searchParams.get('endTime')!)
+      : undefined;
+    const includeEvents =
+      searchParams.get('includeEvents')?.split(',') || undefined;
+    const excludeEvents =
+      searchParams.get('excludeEvents')?.split(',') || undefined;
 
     // Créer le replay
     const replay = await GameReplay.createReplay(gameId, {
@@ -55,7 +61,7 @@ export async function POST(
     const replay = await GameReplay.createReplay(gameId);
 
     let result: string;
-    
+
     switch (format) {
       case 'text':
         result = replay.exportToText();

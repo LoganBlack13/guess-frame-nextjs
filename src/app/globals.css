@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --font-family-sans: var(--font-geist-sans), system-ui, sans-serif;
@@ -6,12 +6,15 @@
 }
 
 @plugin "daisyui" {
-
-  themes: light --default, dark --prefersdark, synthwave, cyberpunk, retro, cupcake;
-
+  themes:
+    light --default,
+    dark --prefersdark,
+    synthwave,
+    cyberpunk,
+    retro,
+    cupcake;
 }
 
 body {
   @apply min-h-screen bg-base-100 text-base-content font-sans antialiased;
 }
-

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server';
+
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
@@ -10,22 +11,22 @@ export async function GET() {
     const allMovies = await prisma.movie.findMany({
       select: {
         genres: true,
-        releaseDate: true
-      }
+        releaseDate: true,
+      },
     });
 
     // Traiter les genres (JSON string -> array)
     const genreCounts: Record<string, number> = {};
     const yearCounts: Record<string, number> = {};
 
-    allMovies.forEach(movie => {
+    allMovies.forEach((movie) => {
       // Compter les genres
       try {
         const genres = JSON.parse(movie.genres || '[]');
         genres.forEach((genre: string) => {
           genreCounts[genre] = (genreCounts[genre] || 0) + 1;
         });
-      } catch (e) {
+      } catch {
         // Ignorer les erreurs de parsing JSON
       }
 
@@ -39,14 +40,14 @@ export async function GET() {
     // Dernière mise à jour
     const lastMovie = await prisma.movie.findFirst({
       orderBy: { createdAt: 'desc' },
-      select: { createdAt: true }
+      select: { createdAt: true },
     });
 
     const stats = {
       totalMovies,
       moviesByGenre: genreCounts,
       moviesByYear: yearCounts,
-      lastUpdate: lastMovie?.createdAt?.toISOString() || null
+      lastUpdate: lastMovie?.createdAt?.toISOString() || null,
     };
 
     return NextResponse.json(stats);

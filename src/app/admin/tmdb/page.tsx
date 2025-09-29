@@ -1,4 +1,4 @@
-import { TMDBAdminClient } from "./TMDBAdminClient";
+import { TMDBAdminClient } from './TMDBAdminClient';
 
 export default function TMDBAdminPage() {
   return (
@@ -13,7 +13,7 @@ export default function TMDBAdminPage() {
               Gérer la base de données des films TMDB
             </p>
           </div>
-          
+
           <TMDBAdminClient />
         </div>
       </div>

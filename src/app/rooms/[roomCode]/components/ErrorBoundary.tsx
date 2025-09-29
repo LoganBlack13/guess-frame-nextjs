@@ -14,7 +14,10 @@ interface ErrorBoundaryProps {
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
-export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export default class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -29,7 +32,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo,
@@ -55,18 +58,21 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
             <div className="card border border-error bg-error/10 shadow-xl">
               <div className="card-body items-center text-center gap-4">
-                <h1 className="text-3xl font-semibold text-error">Something went wrong</h1>
+                <h1 className="text-3xl font-semibold text-error">
+                  Something went wrong
+                </h1>
                 <p className="text-base text-error/70">
-                  An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
+                  An unexpected error occurred. Please try refreshing the page
+                  or contact support if the problem persists.
                 </p>
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     onClick={this.handleRetry}
                     className="btn btn-primary"
                   >
                     Try again
                   </button>
-                  <button 
+                  <button
                     onClick={() => window.location.reload()}
                     className="btn btn-secondary"
                   >

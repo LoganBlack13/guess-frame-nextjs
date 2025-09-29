@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+
 import ThemeSelector from '@/components/ui/theme-selector';
 
 interface ReplayLayoutProps {
@@ -8,7 +9,10 @@ interface ReplayLayoutProps {
   children: React.ReactNode;
 }
 
-export default function ReplayLayout({ roomCode, children }: ReplayLayoutProps) {
+export default function ReplayLayout({
+  roomCode,
+  children,
+}: ReplayLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-base-100">
       <header className="border-b border-base-300 bg-base-100">
@@ -18,8 +22,8 @@ export default function ReplayLayout({ roomCode, children }: ReplayLayoutProps) 
           </Link>
           <div className="flex items-center gap-3">
             <ThemeSelector />
-            <Link 
-              href={`/rooms/${roomCode}/lobby`} 
+            <Link
+              href={`/rooms/${roomCode}/lobby`}
               className="btn btn-ghost btn-sm"
             >
               Back to Lobby

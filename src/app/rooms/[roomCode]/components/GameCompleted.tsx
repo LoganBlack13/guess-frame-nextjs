@@ -1,15 +1,19 @@
 'use client';
 
+import { useState } from 'react';
+
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 
 interface GameCompletedProps {
   className?: string;
   roomCode: string;
 }
 
-export default function GameCompleted({ className, roomCode }: GameCompletedProps) {
+export default function GameCompleted({
+  className,
+  roomCode,
+}: GameCompletedProps) {
   const searchParams = useSearchParams();
   const playerId = searchParams.get('playerId');
   const role = searchParams.get('role');
@@ -45,7 +49,9 @@ export default function GameCompleted({ className, roomCode }: GameCompletedProp
     <div className={`card bg-base-200 shadow-xl ${className}`}>
       <div className="card-body text-center">
         <div className="text-6xl mb-4">🎉</div>
-        <h1 className="text-3xl font-bold text-primary mb-2">Game Completed!</h1>
+        <h1 className="text-3xl font-bold text-primary mb-2">
+          Game Completed!
+        </h1>
         <p className="text-base-content/70 mb-6">
           Great game everyone! Check out the final results below.
         </p>
@@ -61,15 +67,10 @@ export default function GameCompleted({ className, roomCode }: GameCompletedProp
                 Returning to Lobby...
               </>
             ) : (
-              <>
-                🎮 Return to Lobby
-              </>
+              <>🎮 Return to Lobby</>
             )}
           </button>
-          <Link 
-            href="/" 
-            className="btn btn-primary btn-lg"
-          >
+          <Link href="/" className="btn btn-primary btn-lg">
             🏠 Return to Homepage
           </Link>
         </div>

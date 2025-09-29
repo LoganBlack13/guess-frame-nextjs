@@ -1,6 +1,6 @@
 'use client';
 
-import type { Frame, Player } from "@/lib/rooms";
+import type { Frame, Player } from '@/lib/rooms';
 
 interface FrameQueueProps {
   frameQueue: Frame[];
@@ -8,32 +8,51 @@ interface FrameQueueProps {
   currentPlayerId?: string | null;
 }
 
-export default function FrameQueue({ frameQueue, playersById, currentPlayerId }: FrameQueueProps) {
+export default function FrameQueue({
+  frameQueue,
+  playersById,
+  currentPlayerId,
+}: FrameQueueProps) {
   return (
     <section className="card border border-base-300 bg-base-200 shadow-md">
       <div className="card-body gap-3">
         <div className="flex items-center justify-between">
           <h2 className="card-title text-2xl text-base-content">Frame queue</h2>
-          <span className="badge badge-outline">{frameQueue.length}&nbsp;saved</span>
+          <span className="badge badge-outline">
+            {frameQueue.length}&nbsp;saved
+          </span>
         </div>
         {frameQueue.length ? (
           <ul className="grid gap-3 md:grid-cols-2">
             {frameQueue.map((frame) => {
               const contributor = playersById.get(frame.addedBy);
               const solvedCount = frame.solvedPlayerIds.length;
-              const youSolved = currentPlayerId ? frame.solvedPlayerIds.includes(currentPlayerId) : false;
+              const youSolved = currentPlayerId
+                ? frame.solvedPlayerIds.includes(currentPlayerId)
+                : false;
               const contributorName = contributor
                 ? contributor.name
-                : frame.addedBy === "quiz-generator"
-                  ? "Quiz generator"
-                  : "Auto seeded";
+                : frame.addedBy === 'quiz-generator'
+                  ? 'Quiz generator'
+                  : 'Auto seeded';
               return (
-                <li key={frame.id} className="rounded-lg border border-base-300 bg-base-100 p-4">
+                <li
+                  key={frame.id}
+                  className="rounded-lg border border-base-300 bg-base-100 p-4"
+                >
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-base-content">Frame #{frame.order}</p>
+                    <p className="font-semibold text-base-content">
+                      Frame #{frame.order}
+                    </p>
                     <div className="flex items-center gap-2 text-xs text-base-content/70">
-                      <span className="badge badge-outline">{solvedCount} solved</span>
-                      {youSolved ? <span className="badge badge-success badge-sm">Solved by you</span> : null}
+                      <span className="badge badge-outline">
+                        {solvedCount} solved
+                      </span>
+                      {youSolved ? (
+                        <span className="badge badge-success badge-sm">
+                          Solved by you
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <a

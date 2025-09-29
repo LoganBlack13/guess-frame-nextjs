@@ -22,13 +22,13 @@ export default function Notification({
   useEffect(() => {
     if (show) {
       setIsVisible(true);
-      
+
       if (duration > 0) {
         const timer = setTimeout(() => {
           setIsVisible(false);
           setTimeout(() => onClose?.(), 300); // Wait for animation
         }, duration);
-        
+
         return () => clearTimeout(timer);
       }
     }
@@ -56,14 +56,14 @@ export default function Notification({
   };
 
   return (
-    <div 
+    <div
       className={`alert ${typeClasses[type]} fixed top-4 right-4 z-50 max-w-sm shadow-lg transition-all duration-300 ${
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       }`}
     >
       <span className="text-lg">{icons[type]}</span>
       <span className="flex-1">{message}</span>
-      <button 
+      <button
         onClick={handleClose}
         className="btn btn-ghost btn-xs"
         aria-label="Close notification"

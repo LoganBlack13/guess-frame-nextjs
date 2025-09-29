@@ -8,7 +8,11 @@ interface GameListProps {
   onGameSelect: (game: Game) => void;
 }
 
-export default function GameList({ games, selectedGame, onGameSelect }: GameListProps) {
+export default function GameList({
+  games,
+  selectedGame,
+  onGameSelect,
+}: GameListProps) {
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('fr-FR', {
       year: 'numeric',
@@ -48,10 +52,8 @@ export default function GameList({ games, selectedGame, onGameSelect }: GameList
   return (
     <div className="card bg-base-200">
       <div className="card-body">
-        <h2 className="card-title">
-          Parties ({games.length})
-        </h2>
-        
+        <h2 className="card-title">Parties ({games.length})</h2>
+
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {games.map((game) => (
             <div
@@ -70,32 +72,32 @@ export default function GameList({ games, selectedGame, onGameSelect }: GameList
                     {getStatusText(game.status)}
                   </span>
                 </div>
-                
+
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-base-content/70">Créée:</span>
                     <span>{formatDate(game.createdAt)}</span>
                   </div>
-                  
+
                   {game.startedAt && (
                     <div className="flex justify-between">
                       <span className="text-base-content/70">Démarrée:</span>
                       <span>{formatDate(game.startedAt)}</span>
                     </div>
                   )}
-                  
+
                   {game.completedAt && (
                     <div className="flex justify-between">
                       <span className="text-base-content/70">Terminée:</span>
                       <span>{formatDate(game.completedAt)}</span>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between">
                     <span className="text-base-content/70">Frames:</span>
                     <span>{game.gameFrames.length}</span>
                   </div>
-                  
+
                   <div className="flex justify-between">
                     <span className="text-base-content/70">Événements:</span>
                     <span>{game.events.length}</span>

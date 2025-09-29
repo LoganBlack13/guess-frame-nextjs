@@ -1,7 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from "react";
-import type { GameDifficulty, Room, RoomStatus } from "@/lib/rooms";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+import type { Room, RoomStatus } from '@/lib/rooms';
+
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 export interface UseRoomControllerOptions {
   initialRoom: Room | null;
@@ -21,7 +30,7 @@ function formatSecondsDisplay(value: number): string {
   const clamped = Math.max(0, Math.ceil(value));
   const minutes = Math.floor(clamped / 60);
   const seconds = clamped % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 export function useRoomController({
@@ -34,48 +43,60 @@ export function useRoomController({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [roomMissing, setRoomMissing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [eventsConnected, setEventsConnected] = useState(true);
-
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  const [difficultyChoice, setDifficultyChoice] = useState<GameDifficulty>(initialRoom?.difficulty || 'normal');
-  const [durationChoice, setDurationChoice] = useState<number>(initialRoom?.durationMinutes || 10);
+  const [difficultyChoice, setDifficultyChoice] = useState<GameDifficulty>(
+    initialRoom?.difficulty || 'normal'
+  );
+  const [durationChoice, setDurationChoice] = useState<number>(
+    initialRoom?.durationMinutes || 10
+  );
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [settingsSavedAt, setSettingsSavedAt] = useState<number | null>(null);
 
-  const [guessValue, setGuessValue] = useState("");
+  const [guessValue, setGuessValue] = useState('');
   const [guessFeedback, setGuessFeedback] = useState<string | null>(null);
   const [isSubmittingGuess, setIsSubmittingGuess] = useState(false);
 
   // Nouvelle logique pour la génération de partie
   const [isGeneratingGame, setIsGeneratingGame] = useState(false);
-  const [gameGenerationError, setGameGenerationError] = useState<string | null>(null);
+  const [gameGenerationError, setGameGenerationError] = useState<string | null>(
+    null
+  );
 
   const [isAdvancingFrame, setIsAdvancingFrame] = useState(false);
 
-  const [shareUrl, setShareUrl] = useState<string>("");
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
-  const [partyCountdown, setPartyCountdown] = useState<number | null>(null);
+  const [shareUrl, setShareUrl] = useState<string>('');
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>(
+    'idle'
+  );
+  const [partyCountdown] = useState<number | null>(null);
   const [shouldRedirectToParty, setShouldRedirectToParty] = useState(false);
 
   // Chat state
-  const [chatMessages, setChatMessages] = useState<Array<{
-    id: string;
-    playerId: string;
-    playerName: string;
-    message: string;
-    timestamp: number;
-  }>>([]);
+  const [chatMessages, setChatMessages] = useState<
+    Array<{
+      id: string;
+      playerId: string;
+      playerName: string;
+      message: string;
+      timestamp: number;
+    }>
+  >([]);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const autoAdvanceTriggeredRef = useRef(false);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const cleanupIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const canManage = Boolean(hostSessionActive);
   const effectivePlayerId = playerId ?? null;
+
+
+  // Gestion des erreurs WebSocket
+
+
+  const [eventsConnected, setEventsConnected] = useState(true);
 
   const refreshRoom = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}) => {
@@ -86,20 +107,22 @@ export function useRoomController({
 
       try {
         const response = await fetch(`/api/rooms/${roomCode}`, {
-          method: "GET",
-          cache: "no-store",
+          method: 'GET',
+          cache: 'no-store',
         });
 
         if (response.status === 404) {
           setRoomMissing(true);
-          setErrorMessage("This lobby has wrapped. Ask the host for a fresh code.");
+          setErrorMessage(
+            'This lobby has wrapped. Ask the host for a fresh code.'
+          );
           return;
         }
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const message =
-            payload && typeof payload.error === "string"
+            payload && typeof payload.error === 'string'
               ? payload.error
               : "We couldn't refresh the lobby.";
           throw new Error(message);
@@ -112,7 +135,10 @@ export function useRoomController({
           setRoomMissing(false);
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "We couldn't refresh the lobby.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "We couldn't refresh the lobby.";
         setErrorMessage(message);
       } finally {
         if (!silent) {
@@ -120,7 +146,7 @@ export function useRoomController({
         }
       }
     },
-    [roomCode, roomMissing],
+    [roomCode, roomMissing]
   );
 
   useEffect(() => {
@@ -142,181 +168,72 @@ export function useRoomController({
   }, [settingsSavedAt]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       setShareUrl(`${window.location.origin}/rooms/${roomCode}`);
     }
   }, [roomCode]);
 
   // Effect for automatic redirection to the party page
   useEffect(() => {
-    if (shouldRedirectToParty && typeof window !== "undefined") {
+    if (shouldRedirectToParty && typeof window !== 'undefined') {
       console.log('🚀 Redirecting to party page for room:', roomCode);
       const redirectTimer = setTimeout(() => {
         const redirectUrl = `/rooms/${roomCode}/party?playerId=${effectivePlayerId}&role=${hostSessionActive ? 'host' : 'guest'}`;
         console.log('🚀 Redirecting to:', redirectUrl);
         window.location.href = redirectUrl;
       }, 100); // Small delay to ensure state is updated
-      
+
       return () => clearTimeout(redirectTimer);
     }
   }, [shouldRedirectToParty, roomCode, effectivePlayerId, hostSessionActive]);
 
-  useEffect(() => {
-    if (typeof window === "undefined" || roomMissing) {
-      return;
-    }
-
-    const source = new EventSource(`/api/rooms/${roomCode}/events`);
-
-    const handleUpdate: EventListener = (event) => {
-      const message = event as MessageEvent<string>;
-      try {
-        const data = JSON.parse(message.data) as Room;
-        setRoom(data);
-        setRoomMissing(false);
-        setErrorMessage(null);
-        setEventsConnected(true);
-      } catch (error) {
-        console.error("Failed to parse lobby update", error);
-      }
-    };
-
-    const handlePartyRedirect: EventListener = (event) => {
-      const message = event as MessageEvent<string>;
-      try {
-        const data = JSON.parse(message.data) as Room;
-        console.log('🎯 Received party:redirect event for room:', data.code);
-        setRoom(data);
-        setShouldRedirectToParty(true);
-      } catch (error) {
-        console.error("Failed to parse party redirect", error);
-      }
-    };
-
-    const handlePartyCountdown: EventListener = (event) => {
-      const message = event as MessageEvent<string>;
-      try {
-        const data = JSON.parse(message.data) as { room: Room; countdown: number };
-        console.log(`🎯 Received party:countdown event for room ${data.room.code}: ${data.countdown}`);
-        setRoom(data.room);
-        setPartyCountdown(data.countdown);
-      } catch (error) {
-        console.error("Failed to parse party countdown", error);
-      }
-    };
-
-    const handleChatMessage: EventListener = (event) => {
-      const message = event as MessageEvent<string>;
-      try {
-        const data = JSON.parse(message.data);
-        setChatMessages(prev => {
-          // Éviter les doublons en vérifiant l'ID du message
-          const exists = prev.some(msg => msg.id === data.id);
-          if (exists) return prev;
-          return [...prev, data];
-        });
-      } catch (error) {
-        console.error("Failed to parse chat message", error);
-      }
-    };
-
-    source.addEventListener("room:update", handleUpdate);
-    source.addEventListener("party:redirect", handlePartyRedirect);
-    source.addEventListener("party:countdown", handlePartyCountdown);
-    source.addEventListener("chat:message", handleChatMessage);
-    source.onopen = () => {
-      console.log('🔌 SSE connection opened for room:', roomCode);
+  // WebSocket connection for real-time updates
+  const {
+    isConnected: wsConnected,
+    error: wsError,
+    sendChatMessage: wsSendChatMessage,
+  } = useWebSocket({
+    roomCode,
+    playerId: effectivePlayerId,
+    onRoomUpdate: (data: Room) => {
+      setRoom(data);
+      setRoomMissing(false);
+      setErrorMessage(null);
       setEventsConnected(true);
-    };
-    source.onerror = () => {
-      console.log('❌ SSE connection error for room:', roomCode);
-      setEventsConnected(false);
-      setErrorMessage((previous) => previous ?? "Live updates interrupted. Use refresh while we reconnect.");
-    };
-
-    return () => {
-      source.removeEventListener("room:update", handleUpdate);
-      source.removeEventListener("party:redirect", handlePartyRedirect);
-      source.removeEventListener("party:countdown", handlePartyCountdown);
-      source.removeEventListener("chat:message", handleChatMessage);
-      source.close();
-    };
-  }, [roomCode, roomMissing]);
-
-  // Fonction pour envoyer un heartbeat
-  const sendHeartbeat = useCallback(async () => {
-    if (!effectivePlayerId) return;
-
-    try {
-      await fetch(`/api/rooms/${roomCode}/heartbeat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: effectivePlayerId }),
+    },
+    onChatMessage: (message: { id: string; playerId: string; playerName: string; message: string; timestamp: number }) => {
+      setChatMessages((prev) => {
+        const exists = prev.some((msg) => msg.id === message.id);
+        if (exists) return prev;
+        return [...prev, message];
       });
-    } catch (error) {
-      console.error('Failed to send heartbeat:', error);
-    }
-  }, [effectivePlayerId, roomCode]);
+    },
+    onError: (error: Error) => {
+      console.error('WebSocket error:', error);
+      setEventsConnected(false);
+      setErrorMessage(
+        'Live updates interrupted. Use refresh while we reconnect.'
+      );
+    },
+    enabled: !roomMissing,
+  });
 
-  // Effect pour gérer le heartbeat
+  // Update events connected state based on WebSocket connection
   useEffect(() => {
-    if (!effectivePlayerId || roomMissing) {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-        heartbeatIntervalRef.current = null;
-      }
-      return;
+    setEventsConnected(wsConnected);
+    if (wsError) {
+      setErrorMessage(wsError);
     }
-
-    // Envoyer un heartbeat immédiatement
-    sendHeartbeat();
-
-    // Puis toutes les 10 secondes
-    heartbeatIntervalRef.current = setInterval(sendHeartbeat, 10000);
-
-    return () => {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-        heartbeatIntervalRef.current = null;
-      }
-    };
-  }, [effectivePlayerId, roomMissing, sendHeartbeat]);
-
-  // Effect pour nettoyer les joueurs inactifs périodiquement
-  useEffect(() => {
-    if (roomMissing) {
-      if (cleanupIntervalRef.current) {
-        clearInterval(cleanupIntervalRef.current);
-        cleanupIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Nettoyer toutes les 30 secondes
-    cleanupIntervalRef.current = setInterval(async () => {
-      try {
-        await fetch(`/api/rooms/${roomCode}/cleanup`, {
-          method: 'POST',
-        });
-      } catch (error) {
-        console.error('Failed to cleanup inactive players:', error);
-      }
-    }, 30000);
-
-    return () => {
-      if (cleanupIntervalRef.current) {
-        clearInterval(cleanupIntervalRef.current);
-        cleanupIntervalRef.current = null;
-      }
-    };
-  }, [roomCode, roomMissing]);
+  }, [wsConnected, wsError]);
 
   const players = useMemo(() => {
-    return room ? [...room.players].sort((a, b) => a.joinedAt - b.joinedAt) : [];
+    return room
+      ? [...(room?.players || [])].sort((a, b) => a.joinedAt - b.joinedAt)
+      : [];
   }, [room?.players]);
 
   const playersById = useMemo(() => {
-    return players.reduce<Map<string, any>>((map, player) => {
+    return players.reduce<Map<string, { id: string; name: string; role: string; score: number; isConnected: boolean; joinedAt: Date }>>((map, player) => {
       map.set(player.id, player);
       return map;
     }, new Map());
@@ -325,16 +242,21 @@ export function useRoomController({
   const sortedByScore = useMemo(() => {
     return [...players].sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return a.joinedAt - b.joinedAt;
-    });
-  }, [players]);
+    return a.joinedAt - b.joinedAt;
+  });
+}, [players]);
 
-  const frameQueue = useMemo(() => room ? [...room.frames] : [], [room?.frames]);
-  const framesMissing = room ? Math.max(0, room.targetFrameCount - frameQueue.length) : 0;
+  const frameQueue = useMemo(
+    () => (room?.frames ? [...room.frames] : []),
+    [room?.frames]
+  );
+  const framesMissing = room?.targetFrameCount
+    ? Math.max(0, (room?.targetFrameCount || 0) - frameQueue.length)
+    : 0;
 
   const frameStartTimestamp = room?.frameStartedAt ?? null;
   const computeCountdown = useCallback((): CountdownState => {
-    if (!room || room.status !== "in-progress" || !frameStartTimestamp) {
+    if (!room || room?.status !== 'in-progress' || !frameStartTimestamp) {
       return {
         preRoll: 0,
         guess: room?.guessWindowSeconds ?? 20,
@@ -346,73 +268,84 @@ export function useRoomController({
     const now = Date.now();
     const preRoll = Math.max(0, Math.ceil((frameStartTimestamp - now) / 1000));
     const elapsed = Math.max(0, (now - frameStartTimestamp) / 1000);
-    const guess = Math.max(0, room.guessWindowSeconds - elapsed);
+    const guess = Math.max(0, (room?.guessWindowSeconds || 20) - elapsed);
     const isPreRoll = preRoll > 0;
     const timerDisplay = formatSecondsDisplay(isPreRoll ? preRoll : guess);
 
     return { preRoll, guess, timerDisplay, isPreRoll };
-  }, [frameStartTimestamp, room?.guessWindowSeconds, room?.status]);
+  }, [frameStartTimestamp, room]);
 
-  const [countdown, setCountdown] = useState<CountdownState>(() => computeCountdown());
+  const [countdown, setCountdown] = useState<CountdownState>(() =>
+    computeCountdown()
+  );
 
   useEffect(() => {
     setCountdown(computeCountdown());
-  }, [computeCountdown]);
+  }, [computeCountdown, room]);
 
   useEffect(() => {
-    if (!room || room.status !== "in-progress" || !frameStartTimestamp) {
+    if (!room || room?.status !== 'in-progress' || !frameStartTimestamp) {
       return;
     }
     const interval = window.setInterval(() => {
       setCountdown(computeCountdown());
     }, 250);
     return () => window.clearInterval(interval);
-  }, [computeCountdown, frameStartTimestamp, room?.status]);
+  }, [computeCountdown, frameStartTimestamp, room?.status, room]);
 
   const currentFrameIndex = useMemo(() => {
-    if (!room || !room.frames.length) return 0;
-    return room.currentFrameIndex;
-  }, [room?.currentFrameIndex]);
+    if (!room || !room.frames || !room.frames.length) return 0;
+    return room?.currentFrameIndex || 0;
+  }, [room?.currentFrameIndex, room]);
 
-  const currentFrame = room?.frames.length ? room.frames[currentFrameIndex] : null;
+  const currentFrame = room?.frames?.length
+    ? room.frames[currentFrameIndex]
+    : null;
   const alreadySolvedByYou = Boolean(
-    currentFrame && effectivePlayerId && currentFrame.solvedPlayerIds.includes(effectivePlayerId),
+    currentFrame &&
+      effectivePlayerId &&
+      currentFrame.solvedPlayerIds.includes(effectivePlayerId)
   );
 
   const canGuess = Boolean(
     effectivePlayerId &&
-      room?.status === "in-progress" &&
+      room?.status === 'in-progress' &&
       !countdown.isPreRoll &&
       countdown.guess > 0 &&
-      !alreadySolvedByYou,
+      !alreadySolvedByYou
   );
 
   const totalFrames = room?.targetFrameCount ?? 0;
   const currentFrameDisplay =
-    room?.status === "in-progress" || room?.status === "completed"
+    room?.status === 'in-progress' || room?.status === 'completed'
       ? Math.min(totalFrames, (room?.currentFrameIndex ?? 0) + 1)
       : 0;
 
   const isFinalFrameActive =
-    room?.status === "in-progress" && (room?.currentFrameIndex ?? 0) >= Math.max(0, (room?.targetFrameCount ?? 0) - 1);
-  const nextFrameNumber = Math.min(totalFrames, (room?.currentFrameIndex ?? 0) + 2);
+    room?.status === 'in-progress' &&
+    (room?.currentFrameIndex ?? 0) >=
+      Math.max(0, (room?.targetFrameCount ?? 0) - 1);
+  const nextFrameNumber = Math.min(
+    totalFrames,
+    (room?.currentFrameIndex ?? 0) + 2
+  );
 
   const handleCopyCode = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(room?.code ?? "");
-      setCopyState("copied");
-      setTimeout(() => setCopyState("idle"), 2500);
+      await navigator.clipboard.writeText(room?.code ?? '');
+      setCopyState('copied');
+      setTimeout(() => setCopyState('idle'), 2500);
     } catch (error) {
-      console.error("Failed to copy room code", error);
-      setCopyState("error");
-      setTimeout(() => setCopyState("idle"), 2500);
+      console.error('Failed to copy room code', error);
+      setCopyState('error');
+      setTimeout(() => setCopyState('idle'), 2500);
     }
   }, [room?.code]);
 
   const mutateStatus = useCallback(
     async (nextStatus: RoomStatus) => {
       if (!canManage) {
-        setStatusError("Only the host can manage the match state.");
+        setStatusError('Only the host can manage the match state.');
         return;
       }
 
@@ -421,9 +354,9 @@ export function useRoomController({
 
       try {
         const response = await fetch(`/api/rooms/${roomCode}`, {
-          method: "PATCH",
+          method: 'PATCH',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({ status: nextStatus }),
         });
@@ -431,9 +364,9 @@ export function useRoomController({
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const message =
-            payload && typeof payload.error === "string"
+            payload && typeof payload.error === 'string'
               ? payload.error
-              : "Could not update the match status.";
+              : 'Could not update the match status.';
           throw new Error(message);
         }
 
@@ -442,13 +375,16 @@ export function useRoomController({
           setRoom(payload.room as Room);
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not update the match status.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Could not update the match status.';
         setStatusError(message);
       } finally {
         setIsUpdatingStatus(false);
       }
     },
-    [canManage, roomCode],
+    [canManage, roomCode]
   );
 
   const handleSaveSettings = useCallback(
@@ -456,7 +392,7 @@ export function useRoomController({
       event.preventDefault();
 
       if (!canManage) {
-        setSettingsError("Only the host can update game settings.");
+        setSettingsError('Only the host can update game settings.');
         return;
       }
 
@@ -466,9 +402,9 @@ export function useRoomController({
 
       try {
         const response = await fetch(`/api/rooms/${roomCode}`, {
-          method: "PATCH",
+          method: 'PATCH',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             settings: {
@@ -481,31 +417,34 @@ export function useRoomController({
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const message =
-            payload && typeof payload.error === "string"
+            payload && typeof payload.error === 'string'
               ? payload.error
-              : "Could not update the game settings.";
+              : 'Could not update the game settings.';
           throw new Error(message);
         }
 
         setSettingsSavedAt(Date.now());
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not update the game settings.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Could not update the game settings.';
         setSettingsError(message);
       } finally {
         setIsSavingSettings(false);
       }
     },
-    [canManage, difficultyChoice, durationChoice, roomCode],
+    [canManage, difficultyChoice, durationChoice, roomCode]
   );
 
   const handleAdvanceFrame = useCallback(async () => {
     if (!canManage) {
-      setStatusError("Only the host can advance frames.");
+      setStatusError('Only the host can advance frames.');
       return;
     }
 
     if (framesMissing > 0) {
-      setStatusError("Add more frames before advancing.");
+      setStatusError('Add more frames before advancing.');
       return;
     }
 
@@ -514,19 +453,20 @@ export function useRoomController({
 
     try {
       const response = await fetch(`/api/rooms/${roomCode}/advance`, {
-        method: "POST",
+        method: 'POST',
       });
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         const message =
-          payload && typeof payload.error === "string"
+          payload && typeof payload.error === 'string'
             ? payload.error
-            : "Could not advance the frame.";
+            : 'Could not advance the frame.';
         throw new Error(message);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not advance the frame.";
+      const message =
+        error instanceof Error ? error.message : 'Could not advance the frame.';
       setStatusError(message);
     } finally {
       setIsAdvancingFrame(false);
@@ -536,7 +476,7 @@ export function useRoomController({
   useEffect(() => {
     if (!canManage) return;
     if (framesMissing > 0) return;
-    if (room?.status !== "in-progress") return;
+    if (room?.status !== 'in-progress') return;
     if (!room?.frameStartedAt) return;
     if (countdown.isPreRoll) return;
     if (countdown.guess > 0) return;
@@ -544,19 +484,27 @@ export function useRoomController({
 
     autoAdvanceTriggeredRef.current = true;
     void handleAdvanceFrame();
-  }, [canManage, countdown.guess, countdown.isPreRoll, framesMissing, room?.status]);
+  }, [
+    canManage,
+    countdown.guess,
+    countdown.isPreRoll,
+    framesMissing,
+    room?.status,
+    handleAdvanceFrame,
+    room?.frameStartedAt,
+  ]);
 
   const handleGuessSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
 
       if (!effectivePlayerId) {
-        setGuessFeedback("Join the lobby as a player before guessing.");
+        setGuessFeedback('Join the lobby as a player before guessing.');
         return;
       }
 
       if (!guessValue.trim()) {
-        setGuessFeedback("Type your guess first.");
+        setGuessFeedback('Type your guess first.');
         return;
       }
 
@@ -565,15 +513,20 @@ export function useRoomController({
 
       try {
         const response = await fetch(`/api/rooms/${roomCode}/guess`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ playerId: effectivePlayerId, answer: guessValue }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerId: effectivePlayerId,
+            answer: guessValue,
+          }),
         });
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           const message =
-            payload && typeof payload.error === "string" ? payload.error : "Could not submit guess.";
+            payload && typeof payload.error === 'string'
+              ? payload.error
+              : 'Could not submit guess.';
           throw new Error(message);
         }
 
@@ -584,22 +537,23 @@ export function useRoomController({
 
         if (payload?.outcome?.isCorrect) {
           if (payload.outcome.alreadySolved) {
-            setGuessFeedback("You already solved this frame.");
+            setGuessFeedback('You already solved this frame.');
           } else {
-            setGuessFeedback("Correct! Nice work.");
+            setGuessFeedback('Correct! Nice work.');
           }
-          setGuessValue("");
+          setGuessValue('');
         } else {
-          setGuessFeedback("Not quite—try again before the timer hits zero.");
+          setGuessFeedback('Not quite—try again before the timer hits zero.');
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not submit guess.";
+        const message =
+          error instanceof Error ? error.message : 'Could not submit guess.';
         setGuessFeedback(message);
       } finally {
         setIsSubmittingGuess(false);
       }
     },
-    [effectivePlayerId, guessValue, roomCode],
+    [effectivePlayerId, guessValue, roomCode]
   );
 
   const handleShareCopy = useCallback(() => {
@@ -607,81 +561,75 @@ export function useRoomController({
   }, [handleCopyCode]);
 
   // Chat functions
-  const sendChatMessage = useCallback(async (message: string) => {
-    if (!effectivePlayerId) {
-      throw new Error('Player ID required to send messages');
-    }
-
-    setIsSendingMessage(true);
-    try {
-      const response = await fetch(`/api/rooms/${roomCode}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: effectivePlayerId,
-          message,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send message');
+  const sendChatMessage = useCallback(
+    async (message: string) => {
+      if (!effectivePlayerId) {
+        throw new Error('Player ID required to send messages');
       }
 
-      // Le message sera reçu via SSE, pas besoin de l'ajouter localement
-    } catch (error) {
-      console.error('Failed to send chat message:', error);
-      throw error;
-    } finally {
-      setIsSendingMessage(false);
-    }
-  }, [effectivePlayerId, roomCode]);
+      setIsSendingMessage(true);
+      try {
+        // Use WebSocket to send chat message
+        wsSendChatMessage(message);
+      } catch (error) {
+        console.error('Failed to send chat message:', error);
+        throw error;
+      } finally {
+        setIsSendingMessage(false);
+      }
+    },
+    [effectivePlayerId, wsSendChatMessage]
+  );
 
   // Fonction pour générer la partie
-  const handleStartGame = useCallback(async (settings: {
-    difficulty: 'easy' | 'normal' | 'hard';
-    durationMinutes: number;
-    genres?: string[];
-    yearRange?: { min: number; max: number };
-  }) => {
-    if (!hostSessionActive) {
-      setGameGenerationError('Seul l\'hôte peut démarrer la partie');
-      return;
-    }
-
-    setIsGeneratingGame(true);
-    setGameGenerationError(null);
-
-    try {
-      const response = await fetch(`/api/rooms/${roomCode}/start-game`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start game');
+  const handleStartGame = useCallback(
+    async (settings: {
+      difficulty: 'easy' | 'normal' | 'hard';
+      durationMinutes: number;
+      genres?: string[];
+      yearRange?: { min: number; max: number };
+    }) => {
+      if (!hostSessionActive) {
+        setGameGenerationError("Seul l'hôte peut démarrer la partie");
+        return;
       }
 
-      const result = await response.json();
-      console.log('Game started successfully:', result);
-      
-      // Si la réponse contient la room mise à jour, l'utiliser directement
-      if (result.room) {
-        setRoom(result.room as Room);
-      } else {
-        // Sinon, rafraîchir la room pour voir les changements
-        await refreshRoom({ silent: false });
+      setIsGeneratingGame(true);
+      setGameGenerationError(null);
+
+      try {
+        const response = await fetch(`/api/rooms/${roomCode}/start-game`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to start game');
+        }
+
+        const result = await response.json();
+        console.log('Game started successfully:', result);
+
+        // Si la réponse contient la room mise à jour, l'utiliser directement
+        if (result.room) {
+          setRoom(result.room as Room);
+        } else {
+          // Sinon, rafraîchir la room pour voir les changements
+          await refreshRoom({ silent: false });
+        }
+      } catch (error) {
+        console.error('Failed to start game:', error);
+        setGameGenerationError(
+          error instanceof Error ? error.message : 'Erreur inconnue'
+        );
+      } finally {
+        setIsGeneratingGame(false);
       }
-      
-    } catch (error) {
-      console.error('Failed to start game:', error);
-      setGameGenerationError(error instanceof Error ? error.message : 'Erreur inconnue');
-    } finally {
-      setIsGeneratingGame(false);
-    }
-  }, [hostSessionActive, roomCode, refreshRoom]);
+    },
+    [hostSessionActive, roomCode, refreshRoom]
+  );
 
   return {
     room,

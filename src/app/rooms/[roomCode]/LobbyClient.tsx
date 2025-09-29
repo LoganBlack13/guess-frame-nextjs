@@ -1,14 +1,17 @@
 'use client';
 
-import type { Frame, Player, Room, RoomStatus, GameDifficulty } from "@/lib/rooms";
-import { useRoomController } from "./useRoomController";
-import RoomHeader from "./components/RoomHeader";
-import PlayerList from "./components/PlayerList";
-import GameSettings from "./components/GameSettings";
-import CurrentFrame from "./components/CurrentFrame";
-import FrameQueue from "./components/FrameQueue";
-import HostControls from "./components/HostControls";
-import Scoreboard from "./components/Scoreboard";
+import Link from 'next/link';
+
+import type { Room } from '@/lib/rooms';
+
+import CurrentFrame from './components/CurrentFrame';
+import FrameQueue from './components/FrameQueue';
+import GameSettings from './components/GameSettings';
+import HostControls from './components/HostControls';
+import PlayerList from './components/PlayerList';
+import RoomHeader from './components/RoomHeader';
+import Scoreboard from './components/Scoreboard';
+import { useRoomController } from './useRoomController';
 
 interface LobbyClientProps {
   initialRoom: Room;
@@ -32,7 +35,6 @@ export default function LobbyClient({
     refreshRoom,
     countdown,
     currentFrame,
-    currentFrameIndex,
     currentFrameDisplay,
     totalFrames,
     nextFrameNumber,
@@ -50,11 +52,9 @@ export default function LobbyClient({
     isSubmittingGuess,
     handleGuessSubmit,
     canManage,
-    hostSessionActive: isHostActive,
     mutateStatus,
     isUpdatingStatus,
     statusError,
-    setStatusError,
     handleAdvanceFrame,
     isAdvancingFrame,
     difficultyChoice,
@@ -77,14 +77,17 @@ export default function LobbyClient({
     hostSessionActive,
   });
 
-  const advanceButtonLabel = room?.status === "in-progress"
-    ? isFinalFrameActive
-      ? "Finish match"
-      : `Next frame (${nextFrameNumber}/${totalFrames})`
-    : "Advance frame";
+  const advanceButtonLabel =
+    room?.status === 'in-progress'
+      ? isFinalFrameActive
+        ? 'Finish match'
+        : `Next frame (${nextFrameNumber}/${totalFrames})`
+      : 'Advance frame';
 
-  const currentFrameSolvedCount = currentFrame ? currentFrame.solvedPlayerIds.length : 0;
-  const scoreboardVisible = room?.status === "completed";
+  const currentFrameSolvedCount = currentFrame
+    ? currentFrame.solvedPlayerIds.length
+    : 0;
+  const scoreboardVisible = room?.status === 'completed';
 
   // Affichage du countdown et de la redirection
   if (shouldRedirectToParty || partyCountdown !== null) {
@@ -92,24 +95,29 @@ export default function LobbyClient({
       <div className="flex min-h-screen flex-col bg-base-100">
         <header className="border-b border-base-300 bg-base-100">
           <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
-            <span className="text-lg font-semibold text-primary">Guess the Frame</span>
+            <span className="text-lg font-semibold text-primary">
+              Guess the Frame
+            </span>
           </div>
         </header>
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
           <div className="card border border-primary bg-base-200 shadow-xl">
             <div className="card-body items-center text-center gap-4">
-              <h1 className="text-3xl font-semibold text-primary">The game starts soon!</h1>
+              <h1 className="text-3xl font-semibold text-primary">
+                The game starts soon!
+              </h1>
               {partyCountdown !== null && partyCountdown > 0 ? (
                 <>
-                  <div className="text-6xl font-bold text-primary">{partyCountdown}</div>
+                  <div className="text-6xl font-bold text-primary">
+                    {partyCountdown}
+                  </div>
                   <p className="text-lg text-base-content/70">
-                    Redirecting to the game in {partyCountdown} second{partyCountdown > 1 ? 's' : ''}...
+                    Redirecting to the game in {partyCountdown} second
+                    {partyCountdown > 1 ? 's' : ''}...
                   </p>
                 </>
               ) : (
-                <p className="text-lg text-base-content/70">
-                  Redirecting...
-                </p>
+                <p className="text-lg text-base-content/70">Redirecting...</p>
               )}
             </div>
           </div>
@@ -123,18 +131,27 @@ export default function LobbyClient({
       <div className="flex min-h-screen flex-col bg-base-100">
         <header className="border-b border-base-300 bg-base-100">
           <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
-            <span className="text-lg font-semibold text-primary">Guess the Frame</span>
-            <a href="/" className="link link-hover text-sm">Start a new room</a>
+            <span className="text-lg font-semibold text-primary">
+              Guess the Frame
+            </span>
+            <Link href="/" className="link link-hover text-sm">
+              Start a new room
+            </Link>
           </div>
         </header>
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 text-center">
           <div className="card border border-base-300 bg-base-200 shadow-xl">
             <div className="card-body items-center text-center gap-3">
-              <h1 className="text-3xl font-semibold text-base-content">Room closed</h1>
+              <h1 className="text-3xl font-semibold text-base-content">
+                Room closed
+              </h1>
               <p className="text-base text-base-content/70">
-                The host has ended this lobby or everyone left. Head back home to spin up a new party.
+                The host has ended this lobby or everyone left. Head back home
+                to spin up a new party.
               </p>
-              <a href="/" className="btn btn-primary">Return home</a>
+              <Link href="/" className="btn btn-primary">
+                Return home
+              </Link>
             </div>
           </div>
         </main>
@@ -145,8 +162,8 @@ export default function LobbyClient({
   return (
     <div className="flex min-h-screen flex-col bg-base-100">
       <RoomHeader
-        roomCode={room?.code || ""}
-        status={room?.status || "waiting"}
+        roomCode={room?.code || ''}
+        status={room?.status || 'waiting'}
         eventsConnected={eventsConnected}
         isRefreshing={isRefreshing}
         onRefresh={() => refreshRoom({ silent: false })}
@@ -156,13 +173,10 @@ export default function LobbyClient({
       />
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
-        <PlayerList 
-          players={players} 
-          currentPlayerId={playerId} 
-        />
+        <PlayerList players={players} currentPlayerId={playerId} />
 
         <GameSettings
-          difficulty={room?.difficulty || "medium"}
+          difficulty={room?.difficulty || 'medium'}
           durationMinutes={room?.durationMinutes || 10}
           targetFrameCount={room?.targetFrameCount || 0}
           currentFrameDisplay={currentFrameDisplay}
@@ -172,7 +186,7 @@ export default function LobbyClient({
         />
 
         <CurrentFrame
-          roomStatus={room?.status || "waiting"}
+          roomStatus={room?.status || 'waiting'}
           currentFrame={currentFrame}
           isPreRoll={countdown.isPreRoll}
           timerDisplay={countdown.timerDisplay}
@@ -211,12 +225,12 @@ export default function LobbyClient({
           framesMissing={framesMissing}
           onAdvanceFrame={handleAdvanceFrame}
           isAdvancingFrame={isAdvancingFrame}
-          canAdvanceFrame={canManage && room?.status === "in-progress"}
+          canAdvanceFrame={canManage && room?.status === 'in-progress'}
           advanceButtonLabel={advanceButtonLabel}
           onMutateStatus={mutateStatus}
           isUpdatingStatus={isUpdatingStatus}
           statusError={statusError}
-          roomStatus={room?.status || "waiting"}
+          roomStatus={room?.status || 'waiting'}
         />
 
         <Scoreboard

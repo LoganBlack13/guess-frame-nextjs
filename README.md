@@ -12,13 +12,13 @@ A multiplayer movie-frame trivia experience built with Next.js. Hosts spin up pr
 
 ## Tech Stack
 
-| Layer        | Details                                   |
-| ------------ | ------------------------------------------ |
-| Framework    | Next.js 15 (App Router, React 19)          |
-| Styling      | Tailwind CSS 3 + DaisyUI                   |
-| Database     | SQLite (via Prisma ORM)                    |
-| Realtime     | Server-Sent Events (SSE)                   |
-| Language     | TypeScript                                 |
+| Layer     | Details                           |
+| --------- | --------------------------------- |
+| Framework | Next.js 15 (App Router, React 19) |
+| Styling   | Tailwind CSS 3 + DaisyUI          |
+| Database  | SQLite (via Prisma ORM)           |
+| Realtime  | Server-Sent Events (SSE)          |
+| Language  | TypeScript                        |
 
 ## Prerequisites
 
@@ -28,20 +28,23 @@ A multiplayer movie-frame trivia experience built with Next.js. Hosts spin up pr
 ## Getting Started
 
 1. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 2. **Configure the database and TMDB API**
    Create a `.env` file (if you do not already have one) and add:
+
    ```env
    DATABASE_URL="file:./prisma/dev.db"
    TMDB_API_KEY="your_tmdb_api_key_here"
    ```
-   
+
    **TMDB API Key**: Get your free API key from [The Movie Database](https://www.themoviedb.org/settings/api) to enable TMDB mode for dynamic movie frame generation.
 
 3. **Sync the Prisma schema**
+
    ```bash
    npx prisma generate
    npx prisma db push

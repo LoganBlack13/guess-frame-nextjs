@@ -6,9 +6,9 @@ interface ProgressProps {
 
 export function Progress({ value, max = 100, className = '' }: ProgressProps) {
   return (
-    <progress 
+    <progress
       className={`progress w-full ${className}`}
-      value={value} 
+      value={value}
       max={max}
     />
   );

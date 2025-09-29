@@ -5,18 +5,18 @@ export const DIFFICULTY_LEVELS = {
   easy: {
     label: 'Easy',
     secondsPerFrame: 30,
-    description: 'More time to think'
+    description: 'More time to think',
   },
   normal: {
-    label: 'Normal', 
+    label: 'Normal',
     secondsPerFrame: 20,
-    description: 'Balanced challenge'
+    description: 'Balanced challenge',
   },
   hard: {
     label: 'Hard',
     secondsPerFrame: 10,
-    description: 'Quick thinking required'
-  }
+    description: 'Quick thinking required',
+  },
 } as const;
 
 export type DifficultyLevel = keyof typeof DIFFICULTY_LEVELS;
@@ -31,7 +31,10 @@ export function getDifficultyConfig(level: DifficultyLevel) {
 /**
  * Calculate frame count based on duration and difficulty
  */
-export function calculateFrameCount(durationMinutes: number, difficulty: DifficultyLevel): number {
+export function calculateFrameCount(
+  durationMinutes: number,
+  difficulty: DifficultyLevel
+): number {
   const { secondsPerFrame } = getDifficultyConfig(difficulty);
   const totalSeconds = durationMinutes * 60;
   return Math.floor(totalSeconds / secondsPerFrame);

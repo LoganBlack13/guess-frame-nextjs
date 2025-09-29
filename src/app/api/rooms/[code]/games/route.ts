@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+
 import { getRoomGames } from '@/lib/database/games';
 
 export async function GET(
@@ -13,7 +14,7 @@ export async function GET(
 
     // Récupérer les parties de la salle
     const games = await getRoomGames(code);
-    
+
     // Pagination
     const paginatedGames = games.slice(offset, offset + limit);
 

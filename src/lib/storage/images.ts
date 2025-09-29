@@ -1,6 +1,6 @@
-import { writeFile, mkdir, readFile, stat, unlink } from 'fs/promises';
-import { join } from 'path';
 import { createHash } from 'crypto';
+import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises';
+import { join } from 'path';
 
 export interface ImageCacheEntry {
   url: string;
@@ -24,7 +24,11 @@ export class ImageCache {
   private maxAge: number; // Âge maximal d'une image en millisecondes
   private entries = new Map<string, ImageCacheEntry>();
 
-  constructor(cacheDir: string = './cache/images', maxSize: number = 100 * 1024 * 1024, maxAge: number = 7 * 24 * 60 * 60 * 1000) {
+  constructor(
+    cacheDir: string = './cache/images',
+    maxSize: number = 100 * 1024 * 1024,
+    maxAge: number = 7 * 24 * 60 * 60 * 1000
+  ) {
     this.cacheDir = cacheDir;
     this.maxSize = maxSize;
     this.maxAge = maxAge;
@@ -35,7 +39,7 @@ export class ImageCache {
     try {
       await mkdir(this.cacheDir, { recursive: true });
       await this.loadCacheIndex();
-    } catch (error) {
+    } catch {
       console.error('Failed to initialize image cache:', error);
     }
   }
@@ -46,15 +50,15 @@ export class ImageCache {
       const indexPath = join(this.cacheDir, 'index.json');
       const indexData = await readFile(indexPath, 'utf-8');
       const index = JSON.parse(indexData);
-      
+
       for (const [url, entry] of Object.entries(index)) {
         this.entries.set(url, {
-          ...(entry as any),
-          downloadedAt: new Date((entry as any).downloadedAt),
-          lastAccessed: new Date((entry as any).lastAccessed),
+          ...(entry as { url: string; filePath: string; size: number; downloadedAt: string; lastAccessed: string }),
+          downloadedAt: new Date((entry as { downloadedAt: string }).downloadedAt),
+          lastAccessed: new Date((entry as { lastAccessed: string }).lastAccessed),
         });
       }
-    } catch (error) {
+    } catch {
       // Index n'existe pas encore, c'est normal
     }
   }
@@ -65,7 +69,7 @@ export class ImageCache {
       const indexPath = join(this.cacheDir, 'index.json');
       const index = Object.fromEntries(this.entries);
       await writeFile(indexPath, JSON.stringify(index, null, 2));
-    } catch (error) {
+    } catch {
       console.error('Failed to save cache index:', error);
     }
   }
@@ -86,7 +90,7 @@ export class ImageCache {
       if (lastDot !== -1) {
         return pathname.substring(lastDot);
       }
-    } catch (error) {
+    } catch {
       // URL invalide
     }
     return '.jpg'; // Extension par défaut
@@ -104,12 +108,14 @@ export class ImageCache {
       // Télécharger l'image
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch image: ${response.status} ${response.statusText}`
+        );
       }
 
       const buffer = await response.arrayBuffer();
       const contentType = response.headers.get('content-type') || 'image/jpeg';
-      
+
       // Générer le nom de fichier
       const fileName = this.generateFileName(url);
       const localPath = join(this.cacheDir, fileName);
@@ -134,7 +140,7 @@ export class ImageCache {
       await this.cleanupCache();
 
       return localPath;
-    } catch (error) {
+    } catch {
       console.error(`Failed to cache image ${url}:`, error);
       return null;
     }
@@ -150,7 +156,7 @@ export class ImageCache {
     // Vérifier si le fichier existe
     try {
       await stat(entry.localPath);
-    } catch (error) {
+    } catch {
       // Fichier n'existe plus, le supprimer de l'index
       this.entries.delete(url);
       await this.saveCacheIndex();
@@ -180,7 +186,7 @@ export class ImageCache {
 
     try {
       await unlink(entry.localPath);
-    } catch (error) {
+    } catch {
       // Fichier déjà supprimé
     }
 
@@ -190,22 +196,27 @@ export class ImageCache {
 
   // Nettoie le cache
   private async cleanupCache(): Promise<void> {
-    const totalSize = Array.from(this.entries.values()).reduce((sum, entry) => sum + entry.size, 0);
-    
+    const totalSize = Array.from(this.entries.values()).reduce(
+      (sum, entry) => sum + entry.size,
+      0
+    );
+
     if (totalSize <= this.maxSize) {
       return;
     }
 
     // Trier les entrées par date d'accès (les plus anciennes en premier)
-    const sortedEntries = Array.from(this.entries.entries())
-      .sort(([, a], [, b]) => a.lastAccessed.getTime() - b.lastAccessed.getTime());
+    const sortedEntries = Array.from(this.entries.entries()).sort(
+      ([, a], [, b]) => a.lastAccessed.getTime() - b.lastAccessed.getTime()
+    );
 
     let currentSize = totalSize;
     const toRemove: string[] = [];
 
     // Supprimer les images les plus anciennes jusqu'à ce que la taille soit acceptable
     for (const [url, entry] of sortedEntries) {
-      if (currentSize <= this.maxSize * 0.8) { // Garder 80% de la taille maximale
+      if (currentSize <= this.maxSize * 0.8) {
+        // Garder 80% de la taille maximale
         break;
       }
 
@@ -222,12 +233,18 @@ export class ImageCache {
   // Récupère les statistiques du cache
   getStats(): ImageCacheStats {
     const entries = Array.from(this.entries.values());
-    
+
     return {
       totalImages: entries.length,
       totalSize: entries.reduce((sum, entry) => sum + entry.size, 0),
-      oldestImage: entries.length > 0 ? new Date(Math.min(...entries.map(e => e.downloadedAt.getTime()))) : null,
-      newestImage: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.downloadedAt.getTime()))) : null,
+      oldestImage:
+        entries.length > 0
+          ? new Date(Math.min(...entries.map((e) => e.downloadedAt.getTime())))
+          : null,
+      newestImage:
+        entries.length > 0
+          ? new Date(Math.max(...entries.map((e) => e.downloadedAt.getTime())))
+          : null,
     };
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGameStats, getGameTimeline } from '@/lib/database/games';
+
+import { getGameStats } from '@/lib/database/games';
 
 export async function GET(
   request: NextRequest,
@@ -37,9 +38,12 @@ Bonnes réponses: ${stats.correctGuesses}
 Précision: ${Math.round(stats.accuracy * 100)}%
 
 === JOUEURS ===
-${stats.playerStats.map(player => 
-  `${player.playerName}: ${player.score} points (${player.correctGuesses}/${player.guesses} corrects, ${Math.round(player.accuracy * 100)}%)`
-).join('\n')}
+${stats.playerStats
+  .map(
+    (player) =>
+      `${player.playerName}: ${player.score} points (${player.correctGuesses}/${player.guesses} corrects, ${Math.round(player.accuracy * 100)}%)`
+  )
+  .join('\n')}
     `.trim();
 
     return new NextResponse(textStats, {

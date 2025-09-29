@@ -1,5 +1,6 @@
-import { writeFile, readFile, mkdir, stat, unlink } from 'fs/promises';
+import { mkdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
+
 import { MovieMetadata } from '../tmdb/types';
 
 export interface MetadataCacheEntry {
@@ -28,7 +29,11 @@ export class MetadataCache {
   private maxAge: number; // Âge maximal d'une entrée en millisecondes
   private entries = new Map<number, MetadataCacheEntry>();
 
-  constructor(cacheDir: string = './cache/metadata', maxEntries: number = 1000, maxAge: number = 30 * 24 * 60 * 60 * 1000) {
+  constructor(
+    cacheDir: string = './cache/metadata',
+    maxEntries: number = 1000,
+    maxAge: number = 30 * 24 * 60 * 60 * 1000
+  ) {
     this.cacheDir = cacheDir;
     this.maxEntries = maxEntries;
     this.maxAge = maxAge;
@@ -39,7 +44,7 @@ export class MetadataCache {
     try {
       await mkdir(this.cacheDir, { recursive: true });
       await this.loadCacheIndex();
-    } catch (error) {
+    } catch {
       console.error('Failed to initialize metadata cache:', error);
     }
   }
@@ -50,16 +55,16 @@ export class MetadataCache {
       const indexPath = join(this.cacheDir, 'index.json');
       const indexData = await readFile(indexPath, 'utf-8');
       const index = JSON.parse(indexData);
-      
+
       for (const [tmdbId, entry] of Object.entries(index)) {
         this.entries.set(Number(tmdbId), {
-          ...(entry as any),
-          data: (entry as any).data,
-          cachedAt: new Date((entry as any).cachedAt),
-          lastAccessed: new Date((entry as any).lastAccessed),
+          ...(entry as { tmdbId: number; data: Record<string, unknown>; cachedAt: string; lastAccessed: string }),
+          data: (entry as { data: Record<string, unknown> }).data,
+          cachedAt: new Date((entry as { cachedAt: string }).cachedAt),
+          lastAccessed: new Date((entry as { lastAccessed: string }).lastAccessed),
         });
       }
-    } catch (error) {
+    } catch {
       // Index n'existe pas encore, c'est normal
     }
   }
@@ -70,7 +75,7 @@ export class MetadataCache {
       const indexPath = join(this.cacheDir, 'index.json');
       const index = Object.fromEntries(this.entries);
       await writeFile(indexPath, JSON.stringify(index, null, 2));
-    } catch (error) {
+    } catch {
       console.error('Failed to save metadata cache index:', error);
     }
   }
@@ -127,16 +132,24 @@ export class MetadataCache {
     }
 
     // Trier les entrées par nombre d'accès et date d'accès
-    const sortedEntries = Array.from(this.entries.entries())
-      .sort(([, a], [, b]) => {
+    const sortedEntries = Array.from(this.entries.entries()).sort(
+      ([, a], [, b]) => {
         // Priorité aux entrées les moins accédées et les plus anciennes
-        const scoreA = a.accessCount + (Date.now() - a.lastAccessed.getTime()) / (24 * 60 * 60 * 1000);
-        const scoreB = b.accessCount + (Date.now() - b.lastAccessed.getTime()) / (24 * 60 * 60 * 1000);
+        const scoreA =
+          a.accessCount +
+          (Date.now() - a.lastAccessed.getTime()) / (24 * 60 * 60 * 1000);
+        const scoreB =
+          b.accessCount +
+          (Date.now() - b.lastAccessed.getTime()) / (24 * 60 * 60 * 1000);
         return scoreA - scoreB;
-      });
+      }
+    );
 
-    const toRemove = sortedEntries.slice(0, this.entries.size - this.maxEntries + 10);
-    
+    const toRemove = sortedEntries.slice(
+      0,
+      this.entries.size - this.maxEntries + 10
+    );
+
     for (const [tmdbId] of toRemove) {
       await this.removeMovie(tmdbId);
     }
@@ -145,11 +158,11 @@ export class MetadataCache {
   // Récupère les statistiques du cache
   getStats(): MetadataCacheStats {
     const entries = Array.from(this.entries.values());
-    
+
     const mostAccessed = entries
       .sort((a, b) => b.accessCount - a.accessCount)
       .slice(0, 10)
-      .map(entry => ({
+      .map((entry) => ({
         tmdbId: entry.tmdbId,
         title: entry.data.title,
         accessCount: entry.accessCount,
@@ -159,8 +172,14 @@ export class MetadataCache {
       totalMovies: entries.length,
       totalSize: JSON.stringify(entries).length,
       mostAccessed,
-      oldestEntry: entries.length > 0 ? new Date(Math.min(...entries.map(e => e.cachedAt.getTime()))) : null,
-      newestEntry: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.cachedAt.getTime()))) : null,
+      oldestEntry:
+        entries.length > 0
+          ? new Date(Math.min(...entries.map((e) => e.cachedAt.getTime())))
+          : null,
+      newestEntry:
+        entries.length > 0
+          ? new Date(Math.max(...entries.map((e) => e.cachedAt.getTime())))
+          : null,
     };
   }
 
@@ -204,7 +223,7 @@ export class MetadataCache {
       .sort((a, b) => b.accessCount - a.accessCount)
       .slice(0, limit);
 
-    return entries.map(entry => entry.data);
+    return entries.map((entry) => entry.data);
   }
 
   // Récupère les films récemment ajoutés
@@ -213,7 +232,7 @@ export class MetadataCache {
       .sort((a, b) => b.cachedAt.getTime() - a.cachedAt.getTime())
       .slice(0, limit);
 
-    return entries.map(entry => entry.data);
+    return entries.map((entry) => entry.data);
   }
 }
 
@@ -225,7 +244,9 @@ export async function cacheMovie(metadata: MovieMetadata): Promise<void> {
   return metadataCache.cacheMovie(metadata);
 }
 
-export async function getCachedMovie(tmdbId: number): Promise<MovieMetadata | null> {
+export async function getCachedMovie(
+  tmdbId: number
+): Promise<MovieMetadata | null> {
   return metadataCache.getCachedMovie(tmdbId);
 }
 

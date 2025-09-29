@@ -1,8 +1,11 @@
 import { Suspense } from 'react';
+
 import { notFound } from 'next/navigation';
-import { getRoomGames } from '@/lib/database/games';
-import { ReplayView } from './components';
+
 import LoadingSpinner from '@/app/rooms/[roomCode]/components/LoadingSpinner';
+import { getRoomGames } from '@/lib/database/games';
+
+import { ReplayView } from './components';
 import ReplayLayout from './components/ReplayLayout';
 
 interface ReplayPageProps {
@@ -14,14 +17,17 @@ interface ReplayPageProps {
   };
 }
 
-export default async function ReplayPage({ params, searchParams }: ReplayPageProps) {
+export default async function ReplayPage({
+  params,
+  searchParams,
+}: ReplayPageProps) {
   const { roomCode } = params;
   const { gameId } = searchParams;
 
   try {
     // Récupérer les parties de la salle
     const games = await getRoomGames(roomCode);
-    
+
     if (games.length === 0) {
       return (
         <ReplayLayout roomCode={roomCode}>
@@ -30,7 +36,7 @@ export default async function ReplayPage({ params, searchParams }: ReplayPagePro
               Aucune partie trouvée
             </h1>
             <p className="text-base-content/70">
-              Cette salle n'a pas encore de parties enregistrées.
+              Cette salle n&apos;a pas encore de parties enregistrées.
             </p>
           </div>
         </ReplayLayout>
@@ -49,10 +55,10 @@ export default async function ReplayPage({ params, searchParams }: ReplayPagePro
         </div>
 
         <Suspense fallback={<LoadingSpinner />}>
-          <ReplayView 
-            roomCode={roomCode} 
-            games={games} 
-            selectedGameId={gameId} 
+          <ReplayView
+            roomCode={roomCode}
+            games={games}
+            selectedGameId={gameId}
           />
         </Suspense>
       </ReplayLayout>

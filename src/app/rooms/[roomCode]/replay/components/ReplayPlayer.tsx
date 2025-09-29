@@ -1,20 +1,67 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Game } from '@/lib/database/types';
+import { useEffect, useRef, useState } from 'react';
+
 
 interface ReplayPlayerProps {
-  replayData: any;
-  game: Game;
+  replayData: {
+    gameId: string;
+    roomCode: string;
+    duration: number;
+    frames: Array<{
+      timestamp: Date;
+      frameIndex: number;
+      frameId: string;
+      movieTitle: string;
+      imageUrl: string;
+      events: Array<{
+        type: string;
+        data: Record<string, unknown>;
+        timestamp: Date;
+      }>;
+    }>;
+    players: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+      guesses: number;
+      correctGuesses: number;
+      accuracy: number;
+    }>;
+    stats: {
+      gameId: string;
+      roomCode: string;
+      duration: number;
+      totalFrames: number;
+      totalGuesses: number;
+      correctGuesses: number;
+      accuracy: number;
+      averageResponseTime: number;
+      playerStats: Array<{
+        playerId: string;
+        playerName: string;
+        score: number;
+        guesses: number;
+        correctGuesses: number;
+        accuracy: number;
+        averageResponseTime: number;
+      }>;
+    };
+    events: Array<{
+      type: string;
+      data: Record<string, unknown>;
+      timestamp: Date;
+    }>;
+  };
 }
 
-export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
+export default function ReplayPlayer({ replayData }: ReplayPlayerProps) {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
-  
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -23,7 +70,9 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
     if (replayData.events && replayData.events.length > 0) {
       const firstEvent = replayData.events[0];
       const lastEvent = replayData.events[replayData.events.length - 1];
-      const total = new Date(lastEvent.timestamp).getTime() - new Date(firstEvent.timestamp).getTime();
+      const total =
+        new Date(lastEvent.timestamp).getTime() -
+        new Date(firstEvent.timestamp).getTime();
       setTotalTime(total);
     }
   }, [replayData]);
@@ -35,7 +84,7 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
       intervalRef.current = setInterval(() => {
         const elapsed = (Date.now() - startTimeRef.current) * speed;
         setCurrentTime(Math.min(elapsed, totalTime));
-        
+
         if (elapsed >= totalTime) {
           setIsPlaying(false);
           setCurrentTime(totalTime);
@@ -58,7 +107,9 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
   // Mettre à jour la frame actuelle basée sur le temps
   useEffect(() => {
     if (replayData.frames && replayData.frames.length > 0) {
-      const frameIndex = Math.floor((currentTime / totalTime) * replayData.frames.length);
+      const frameIndex = Math.floor(
+        (currentTime / totalTime) * replayData.frames.length
+      );
       setCurrentFrame(Math.min(frameIndex, replayData.frames.length - 1));
     }
   }, [currentTime, totalTime, replayData.frames]);
@@ -83,18 +134,21 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
   };
 
   const currentFrameData = replayData.frames?.[currentFrame];
-  const currentEvents = replayData.events?.filter((event: any) => {
-    const eventTime = new Date(event.timestamp).getTime();
-    const startTime = replayData.events[0] ? new Date(replayData.events[0].timestamp).getTime() : 0;
-    const relativeTime = eventTime - startTime;
-    return relativeTime <= currentTime;
-  }) || [];
+  const currentEvents =
+    replayData.events?.filter((event) => {
+      const eventTime = new Date(event.timestamp).getTime();
+      const startTime = replayData.events[0]
+        ? new Date(replayData.events[0].timestamp).getTime()
+        : 0;
+      const relativeTime = eventTime - startTime;
+      return relativeTime <= currentTime;
+    }) || [];
 
   return (
     <div className="card bg-base-200">
       <div className="card-body">
         <h3 className="card-title">Lecteur de Replay</h3>
-        
+
         {/* Contrôles de lecture */}
         <div className="flex items-center gap-4 mb-4">
           <button
@@ -103,7 +157,7 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
           >
             {isPlaying ? '⏸️ Pause' : '▶️ Play'}
           </button>
-          
+
           <div className="flex items-center gap-2">
             <label className="text-sm">Vitesse:</label>
             <select
@@ -117,7 +171,7 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
               <option value={4}>4x</option>
             </select>
           </div>
-          
+
           <div className="text-sm text-base-content/70">
             {formatTime(currentTime)} / {formatTime(totalTime)}
           </div>
@@ -166,7 +220,7 @@ export default function ReplayPlayer({ replayData, game }: ReplayPlayerProps) {
         <div className="space-y-2">
           <h4 className="text-lg font-semibold">Événements</h4>
           <div className="max-h-48 overflow-y-auto space-y-1">
-            {currentEvents.map((event: any, index: number) => (
+            {currentEvents.map((event, index: number) => (
               <div key={index} className="text-sm p-2 bg-base-100 rounded">
                 <span className="font-mono text-xs text-base-content/70">
                   {new Date(event.timestamp).toLocaleTimeString()}

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useRef, useState } from 'react';
+
 import { formatTime } from '@/lib/dateUtils';
 
 interface ChatMessage {
@@ -21,12 +20,12 @@ interface ChatProps {
   className?: string;
 }
 
-export default function Chat({ 
-  messages, 
-  currentPlayerId, 
-  onSendMessage, 
+export default function Chat({
+  messages,
+  currentPlayerId,
+  onSendMessage,
   isConnected,
-  className 
+  className,
 }: ChatProps) {
   const [newMessage, setNewMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,9 +35,9 @@ export default function Chat({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newMessage.trim() || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       await onSendMessage(newMessage.trim());
@@ -53,11 +52,15 @@ export default function Chat({
   // Utilisation de la fonction utilitaire pour éviter les problèmes d'hydratation
 
   return (
-    <div className={`card bg-base-200 shadow-xl h-full flex flex-col ${className}`}>
+    <div
+      className={`card bg-base-200 shadow-xl h-full flex flex-col ${className}`}
+    >
       <div className="card-body flex flex-col h-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="card-title">Chat</h3>
-          <div className={`badge ${isConnected ? 'badge-success' : 'badge-warning'}`}>
+          <div
+            className={`badge ${isConnected ? 'badge-success' : 'badge-warning'}`}
+          >
             {isConnected ? 'LIVE' : 'RECONNECTING'}
           </div>
         </div>
@@ -91,7 +94,9 @@ export default function Chat({
                         </div>
                       )}
                       <div className="text-sm">{msg.message}</div>
-                      <div className={`text-xs opacity-70 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
+                      <div
+                        className={`text-xs opacity-70 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}
+                      >
                         {formatTime(msg.timestamp)}
                       </div>
                     </div>

@@ -1,8 +1,13 @@
-import { addGameEvent, getGameEvents, GameEventData } from '../database';
+import { addGameEvent, getGameEvents } from '../database';
 
 export class GameEventManager {
   // Enregistre le démarrage d'une partie
-  static async recordGameStarted(gameId: string, roomCode: string, playerCount: number, targetFrameCount: number) {
+  static async recordGameStarted(
+    gameId: string,
+    roomCode: string,
+    playerCount: number,
+    targetFrameCount: number
+  ) {
     await addGameEvent(gameId, {
       type: 'game_started',
       data: {
@@ -15,10 +20,10 @@ export class GameEventManager {
 
   // Enregistre le démarrage d'une frame
   static async recordFrameStarted(
-    gameId: string, 
-    frameIndex: number, 
-    frameId: string, 
-    movieTitle: string, 
+    gameId: string,
+    frameIndex: number,
+    frameId: string,
+    movieTitle: string,
     timeLimit: number
   ) {
     await addGameEvent(gameId, {
@@ -109,13 +114,13 @@ export class GameEventManager {
   // Récupère les événements d'un type spécifique
   static async getGameEventsByType(gameId: string, type: string) {
     const events = await getGameEvents(gameId);
-    return events.filter(event => event.type === type);
+    return events.filter((event) => event.type === type);
   }
 
   // Récupère les événements d'une frame spécifique
   static async getFrameEvents(gameId: string, frameId: string) {
     const events = await getGameEvents(gameId);
-    return events.filter(event => {
+    return events.filter((event) => {
       const data = JSON.parse(event.data);
       return data.frameId === frameId;
     });
@@ -124,7 +129,7 @@ export class GameEventManager {
   // Récupère les événements d'un joueur spécifique
   static async getPlayerEvents(gameId: string, playerId: string) {
     const events = await getGameEvents(gameId);
-    return events.filter(event => {
+    return events.filter((event) => {
       const data = JSON.parse(event.data);
       return data.playerId === playerId;
     });
@@ -133,12 +138,12 @@ export class GameEventManager {
   // Calcule les statistiques d'une partie à partir des événements
   static async calculateGameStats(gameId: string) {
     const events = await getGameEvents(gameId);
-    
-    const gameStarted = events.find(e => e.type === 'game_started');
-    const gameCompleted = events.find(e => e.type === 'game_completed');
-    const frameEvents = events.filter(e => e.type === 'frame_started');
-    const guessEvents = events.filter(e => e.type === 'guess_submitted');
-    const correctGuesses = guessEvents.filter(e => {
+
+    const gameStarted = events.find((e) => e.type === 'game_started');
+    const gameCompleted = events.find((e) => e.type === 'game_completed');
+    const frameEvents = events.filter((e) => e.type === 'frame_started');
+    const guessEvents = events.filter((e) => e.type === 'guess_submitted');
+    const correctGuesses = guessEvents.filter((e) => {
       const data = JSON.parse(e.data);
       return data.isCorrect;
     });
@@ -147,20 +152,23 @@ export class GameEventManager {
       totalFrames: frameEvents.length,
       totalGuesses: guessEvents.length,
       correctGuesses: correctGuesses.length,
-      accuracy: guessEvents.length > 0 ? correctGuesses.length / guessEvents.length : 0,
-      duration: gameStarted && gameCompleted 
-        ? new Date(gameCompleted.timestamp).getTime() - new Date(gameStarted.timestamp).getTime()
-        : 0,
+      accuracy:
+        guessEvents.length > 0 ? correctGuesses.length / guessEvents.length : 0,
+      duration:
+        gameStarted && gameCompleted
+          ? new Date(gameCompleted.timestamp).getTime() -
+            new Date(gameStarted.timestamp).getTime()
+          : 0,
     };
   }
 
   // Reconstruit la timeline d'une partie
   static async reconstructTimeline(gameId: string) {
     const events = await getGameEvents(gameId);
-    
+
     const timeline = {
       gameId,
-      events: events.map(event => ({
+      events: events.map((event) => ({
         ...event,
         data: JSON.parse(event.data),
       })),

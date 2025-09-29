@@ -1,14 +1,33 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { Game } from '@/lib/database/types';
-import { useState, useEffect } from 'react';
 
 interface GameStatsProps {
   game: Game;
 }
 
 export default function GameStats({ game }: GameStatsProps) {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{
+    gameId: string;
+    roomCode: string;
+    duration: number;
+    totalFrames: number;
+    totalGuesses: number;
+    correctGuesses: number;
+    accuracy: number;
+    averageResponseTime: number;
+    playerStats: Array<{
+      playerId: string;
+      playerName: string;
+      score: number;
+      guesses: number;
+      correctGuesses: number;
+      accuracy: number;
+      averageResponseTime: number;
+    }>;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -65,7 +84,7 @@ export default function GameStats({ game }: GameStatsProps) {
     <div className="card bg-base-200">
       <div className="card-body">
         <h3 className="card-title">Statistiques de la Partie</h3>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div className="stat">
             <div className="stat-title">Durée</div>
@@ -73,28 +92,24 @@ export default function GameStats({ game }: GameStatsProps) {
               {formatDuration(stats.duration)}
             </div>
           </div>
-          
+
           <div className="stat">
             <div className="stat-title">Frames</div>
-            <div className="stat-value text-secondary">
-              {stats.totalFrames}
-            </div>
+            <div className="stat-value text-secondary">{stats.totalFrames}</div>
           </div>
-          
+
           <div className="stat">
             <div className="stat-title">Tentatives</div>
-            <div className="stat-value text-accent">
-              {stats.totalGuesses}
-            </div>
+            <div className="stat-value text-accent">{stats.totalGuesses}</div>
           </div>
-          
+
           <div className="stat">
             <div className="stat-title">Précision</div>
             <div className="stat-value text-info">
               {Math.round(stats.accuracy * 100)}%
             </div>
           </div>
-          
+
           <div className="stat">
             <div className="stat-title">Temps de réponse moyen</div>
             <div className="stat-value text-warning">
@@ -108,31 +123,33 @@ export default function GameStats({ game }: GameStatsProps) {
             <h4 className="text-lg font-semibold mb-4">Scores des Joueurs</h4>
             <div className="space-y-2">
               {stats.playerStats
-                .sort((a: any, b: any) => b.score - a.score)
-                .map((player: any, index: number) => (
-                  <div key={player.playerId} className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+                .sort((a, b) => b.score - a.score)
+                .map((player, index: number) => (
+                  <div
+                    key={player.playerId}
+                    className="flex items-center justify-between p-3 bg-base-100 rounded-lg"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-primary text-primary-content rounded-full flex items-center justify-center text-sm font-bold">
                         {index + 1}
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between items-center">
-                          <div className="font-semibold">{player.playerName}</div>
+                          <div className="font-semibold">
+                            {player.playerName}
+                          </div>
                           <div className="text-lg font-bold text-primary">
                             {player.score} pts
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-sm text-base-content/70">
                           <div>
-                            {player.guesses} Answers | {player.correctGuesses} Corrects
+                            {player.guesses} Answers | {player.correctGuesses}{' '}
+                            Corrects
                           </div>
                           <div className="flex gap-4">
-                            <div>
-                              {Math.round(player.accuracy * 100)}%
-                            </div>
-                            <div>
-                              {player.averageResponseTime}s avg
-                            </div>
+                            <div>{Math.round(player.accuracy * 100)}%</div>
+                            <div>{player.averageResponseTime}s avg</div>
                           </div>
                         </div>
                       </div>

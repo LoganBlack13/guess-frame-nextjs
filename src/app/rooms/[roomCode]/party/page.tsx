@@ -1,6 +1,8 @@
-import { notFound } from "next/navigation";
-import { getRoom } from "@/lib/rooms";
-import PartyClient from "./PartyClient";
+import { notFound } from 'next/navigation';
+
+import { getRoom } from '@/lib/rooms';
+
+import PartyClient from './PartyClient';
 
 interface PartyPageProps {
   params: { roomCode: string };
@@ -13,7 +15,10 @@ function readParam(value: string | string[] | undefined): string | null {
   return value || null;
 }
 
-export default async function PartyPage({ params, searchParams }: PartyPageProps) {
+export default async function PartyPage({
+  params,
+  searchParams,
+}: PartyPageProps) {
   const resolvedParams = await params;
   const initialRoom = await getRoom(resolvedParams.roomCode);
 
@@ -23,7 +28,7 @@ export default async function PartyPage({ params, searchParams }: PartyPageProps
 
   const playerId = readParam(searchParams?.playerId);
   const role = readParam(searchParams?.role);
-  const hostSessionActive = role === "host";
+  const hostSessionActive = role === 'host';
 
   return (
     <PartyClient
@@ -34,5 +39,3 @@ export default async function PartyPage({ params, searchParams }: PartyPageProps
     />
   );
 }
-
-

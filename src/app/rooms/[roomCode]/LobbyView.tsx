@@ -22,17 +22,9 @@ export function LobbyView(props: LobbyViewProps) {
     errorMessage,
     roomMissing,
     players,
-    sortedByScore,
     shareUrl,
     copyState,
     handleShareCopy,
-    difficultyChoice,
-    setDifficultyChoice,
-    durationChoice,
-    setDurationChoice,
-    handleSaveSettings,
-    isSavingSettings,
-    settingsError,
     settingsSavedAt,
     mutateStatus,
     isUpdatingStatus,
@@ -43,10 +35,8 @@ export function LobbyView(props: LobbyViewProps) {
     shouldRedirectToParty,
     handleStartGame,
     isGeneratingGame,
-    gameGenerationError,
     chatMessages,
     sendChatMessage,
-    isSendingMessage,
   } = controller;
 
   if (roomMissing || !room) {
@@ -80,7 +70,6 @@ export function LobbyView(props: LobbyViewProps) {
   }
 
   const shareBadge = eventsConnected ? "badge-success" : "badge-warning";
-  const settingsSaved = Boolean(settingsSavedAt);
 
   // Affichage du countdown et de la redirection
   if (shouldRedirectToParty || partyCountdown !== null) {
