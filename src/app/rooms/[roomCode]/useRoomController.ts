@@ -148,8 +148,11 @@ export function useRoomController({
   // Effect for automatic redirection to the party page
   useEffect(() => {
     if (shouldRedirectToParty && typeof window !== "undefined") {
+      console.log('🚀 Redirecting to party page for room:', roomCode);
       const redirectTimer = setTimeout(() => {
-        window.location.href = `/rooms/${roomCode}/party?playerId=${effectivePlayerId}&role=${hostSessionActive ? 'host' : 'guest'}`;
+        const redirectUrl = `/rooms/${roomCode}/party?playerId=${effectivePlayerId}&role=${hostSessionActive ? 'host' : 'guest'}`;
+        console.log('🚀 Redirecting to:', redirectUrl);
+        window.location.href = redirectUrl;
       }, 100); // Small delay to ensure state is updated
       
       return () => clearTimeout(redirectTimer);
@@ -180,6 +183,7 @@ export function useRoomController({
       const message = event as MessageEvent<string>;
       try {
         const data = JSON.parse(message.data) as Room;
+        console.log('🎯 Received party:redirect event for room:', data.code);
         setRoom(data);
         setShouldRedirectToParty(true);
       } catch (error) {
@@ -191,6 +195,7 @@ export function useRoomController({
       const message = event as MessageEvent<string>;
       try {
         const data = JSON.parse(message.data) as { room: Room; countdown: number };
+        console.log(`🎯 Received party:countdown event for room ${data.room.code}: ${data.countdown}`);
         setRoom(data.room);
         setPartyCountdown(data.countdown);
       } catch (error) {
@@ -218,9 +223,11 @@ export function useRoomController({
     source.addEventListener("party:countdown", handlePartyCountdown);
     source.addEventListener("chat:message", handleChatMessage);
     source.onopen = () => {
+      console.log('🔌 SSE connection opened for room:', roomCode);
       setEventsConnected(true);
     };
     source.onerror = () => {
+      console.log('❌ SSE connection error for room:', roomCode);
       setEventsConnected(false);
       setErrorMessage((previous) => previous ?? "Live updates interrupted. Use refresh while we reconnect.");
     };

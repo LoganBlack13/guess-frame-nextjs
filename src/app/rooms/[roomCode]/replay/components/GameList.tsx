@@ -57,7 +57,7 @@ export default function GameList({ games, selectedGame, onGameSelect }: GameList
             <div
               key={game.id}
               className={`card bg-base-100 cursor-pointer transition-all hover:bg-base-300 ${
-                selectedGame?.id === game.id ? 'ring-2 ring-primary' : ''
+                selectedGame?.id === game.id ? 'border-2 border-primary' : ''
               }`}
               onClick={() => onGameSelect(game)}
             >

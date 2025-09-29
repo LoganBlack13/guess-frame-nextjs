@@ -309,6 +309,37 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
       return sum + (data.pointsAwarded || 0);
     }, 0);
     
+    // Calculer le temps de réponse moyen pour ce joueur
+    let averageResponseTime = 0;
+    if (playerEventList.length > 0) {
+      const responseTimes: number[] = [];
+      
+      for (const guessEvent of playerEventList) {
+        const guessData = JSON.parse(guessEvent.data);
+        const frameIndex = guessData.frameIndex;
+        
+        // Trouver l'événement frame_started correspondant à cette frame
+        const frameStartedEvent = events.find(e => {
+          if (e.type === 'frame_started') {
+            const frameData = JSON.parse(e.data);
+            return frameData.frameIndex === frameIndex;
+          }
+          return false;
+        });
+        
+        if (frameStartedEvent) {
+          const responseTime = new Date(guessEvent.timestamp).getTime() - new Date(frameStartedEvent.timestamp).getTime();
+          responseTimes.push(responseTime);
+        }
+      }
+      
+      if (responseTimes.length > 0) {
+        averageResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+        // Convertir en secondes
+        averageResponseTime = Math.round(averageResponseTime / 1000);
+      }
+    }
+    
     playerGameStats.push({
       playerId,
       playerName,
@@ -316,7 +347,7 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
       guesses: playerEventList.length,
       correctGuesses: correctGuesses.length,
       accuracy: playerEventList.length > 0 ? correctGuesses.length / playerEventList.length : 0,
-      averageResponseTime: 0, // TODO: Calculer le temps de réponse moyen
+      averageResponseTime,
     });
   }
 
@@ -354,6 +385,37 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
     }
   }
 
+  // Calculer le temps de réponse moyen global
+  let globalAverageResponseTime = 0;
+  if (guesses.length > 0) {
+    const allResponseTimes: number[] = [];
+    
+    for (const guessEvent of guesses) {
+      const guessData = JSON.parse(guessEvent.data);
+      const frameIndex = guessData.frameIndex;
+      
+      // Trouver l'événement frame_started correspondant à cette frame
+      const frameStartedEvent = events.find(e => {
+        if (e.type === 'frame_started') {
+          const frameData = JSON.parse(e.data);
+          return frameData.frameIndex === frameIndex;
+        }
+        return false;
+      });
+      
+      if (frameStartedEvent) {
+        const responseTime = new Date(guessEvent.timestamp).getTime() - new Date(frameStartedEvent.timestamp).getTime();
+        allResponseTimes.push(responseTime);
+      }
+    }
+    
+    if (allResponseTimes.length > 0) {
+      globalAverageResponseTime = allResponseTimes.reduce((sum, time) => sum + time, 0) / allResponseTimes.length;
+      // Convertir en secondes
+      globalAverageResponseTime = Math.round(globalAverageResponseTime / 1000);
+    }
+  }
+
   return {
     gameId: game.id,
     roomCode: game.roomCode,
@@ -362,7 +424,7 @@ export async function getGameStats(gameId: string): Promise<GameStats | null> {
     totalGuesses: guesses.length,
     correctGuesses: correctGuesses.length,
     accuracy: guesses.length > 0 ? correctGuesses.length / guesses.length : 0,
-    averageResponseTime: 0, // TODO: Calculer le temps de réponse moyen
+    averageResponseTime: globalAverageResponseTime,
     playerStats: playerGameStats,
   };
 }

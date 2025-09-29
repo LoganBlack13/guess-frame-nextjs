@@ -587,19 +587,23 @@ export async function updateRoomStatus(
   
   // If we start the game, trigger the redirection and countdown
   if (normalizedStatus === "in-progress") {
+    console.log('🔄 Publishing party redirect event for room:', normalizedRoom.code);
     // Publish the redirection event immediately
     publishPartyRedirect(normalizedRoom);
     
+    console.log('⏰ Starting countdown for room:', normalizedRoom.code);
     // Start the 5 second countdown
     let countdown = 5;
     publishPartyCountdown(normalizedRoom, countdown);
     
     const countdownInterval = setInterval(() => {
       countdown--;
+      console.log(`⏰ Countdown for room ${normalizedRoom.code}: ${countdown}`);
       if (countdown > 0) {
         publishPartyCountdown(normalizedRoom, countdown);
       } else {
         clearInterval(countdownInterval);
+        console.log('🎮 Game starting now for room:', normalizedRoom.code);
         // The game starts now - frameStartedAt is already configured
         publishRoomUpdate(normalizedRoom);
       }
@@ -879,6 +883,23 @@ export async function advanceFrame(
     } else {
       updateData.currentFrameIndex = nextIndex;
       updateData.frameStartedAt = now;
+      
+      // Enregistrer l'événement de démarrage de la nouvelle frame
+      if (room.game && (room.game as any)?.gameFrames?.[nextIndex]) {
+        const gameFrame = (room.game as any).gameFrames[nextIndex];
+        await (tx as any).gameEvent.create({
+          data: {
+            gameId: room.game.id,
+            type: 'frame_started',
+            data: JSON.stringify({
+              frameIndex: nextIndex,
+              frameId: gameFrame.id,
+              movieTitle: gameFrame.movie.title,
+              timeLimit: room.guessWindowSeconds || 20
+            }),
+          },
+        });
+      }
     }
 
     await tx.room.update({
@@ -1034,9 +1055,11 @@ export async function submitGuess(
           type: "guess_submitted",
           data: JSON.stringify({
             playerId: trimmedPlayerId,
+            playerName: player.name,
             frameIndex: currentFrameIndex,
             answer: trimmedAnswer,
             isCorrect,
+            pointsAwarded: isCorrect ? 1 : 0,
             timestamp: new Date().toISOString()
           })
         }

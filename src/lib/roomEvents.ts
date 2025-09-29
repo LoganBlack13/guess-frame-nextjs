@@ -23,6 +23,7 @@ export function publishRoomUpdate(room: Room) {
 }
 
 export function publishPartyRedirect(room: Room) {
+  console.log('📡 Publishing party:redirect event for room:', room.code);
   emitter.emit(eventKey(room.code), {
     type: "party:redirect",
     room,
@@ -30,6 +31,7 @@ export function publishPartyRedirect(room: Room) {
 }
 
 export function publishPartyCountdown(room: Room, countdown: number) {
+  console.log(`📡 Publishing party:countdown event for room ${room.code}: ${countdown}`);
   emitter.emit(eventKey(room.code), {
     type: "party:countdown",
     room,

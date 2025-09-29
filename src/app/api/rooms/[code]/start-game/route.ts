@@ -46,9 +46,9 @@ export async function POST(request: Request, { params }: Params) {
     console.log('⚙️ Settings:', settings);
 
     // Calculer le nombre de frames basé sur la durée et la difficulté
-    const secondsPerFrame = settings.difficulty === 'easy' ? 30 : settings.difficulty === 'normal' ? 20 : 10;
-    const totalSeconds = settings.durationMinutes * 60;
-    const frameCount = Math.floor(totalSeconds / secondsPerFrame);
+    const { calculateFrameCount } = await import('@/lib/types/difficulty');
+    const frameCount = calculateFrameCount(settings.durationMinutes, settings.difficulty);
+    const { secondsPerFrame } = await import('@/lib/types/difficulty').then(m => m.getDifficultyConfig(settings.difficulty));
 
     console.log(`📊 Calculated frame count: ${frameCount} frames`);
 
@@ -95,6 +95,17 @@ export async function POST(request: Request, { params }: Params) {
       1, // Seulement l'hôte pour l'instant
       frameCount
     );
+
+    // Enregistrer l'événement de démarrage de la première frame
+    if (game.gameFrames.length > 0) {
+      await GameEventManager.recordFrameStarted(
+        game.id,
+        0,
+        game.gameFrames[0].id,
+        game.gameFrames[0].movie.title,
+        secondsPerFrame
+      );
+    }
 
     // Mettre à jour les paramètres de la salle avec la difficulté et durée choisies
     console.log('🔄 Updating room settings with difficulty:', settings.difficulty);

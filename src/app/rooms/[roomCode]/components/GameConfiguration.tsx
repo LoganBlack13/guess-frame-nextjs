@@ -70,9 +70,8 @@ export default function GameConfiguration({ onStartGame, isGenerating }: GameCon
   const [error, setError] = useState<string | null>(null);
 
   const calculateFrameCount = () => {
-    const secondsPerFrame = settings.difficulty === 'easy' ? 30 : settings.difficulty === 'normal' ? 20 : 10;
-    const totalSeconds = settings.durationMinutes * 60;
-    return Math.floor(totalSeconds / secondsPerFrame);
+    const { calculateFrameCount } = require('@/lib/types/difficulty');
+    return calculateFrameCount(settings.durationMinutes, settings.difficulty);
   };
 
   const handleStartGame = () => {

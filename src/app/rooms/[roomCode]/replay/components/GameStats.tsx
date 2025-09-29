@@ -24,8 +24,6 @@ export default function GameStats({ game }: GameStatsProps) {
         }
       } catch (error) {
         console.error('Failed to load stats:', error);
-        // Optionnel: afficher une erreur à l'utilisateur
-        // setError(error instanceof Error ? error.message : 'Failed to load stats');
       } finally {
         setLoading(false);
       }
@@ -68,7 +66,7 @@ export default function GameStats({ game }: GameStatsProps) {
       <div className="card-body">
         <h3 className="card-title">Statistiques de la Partie</h3>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="stat">
             <div className="stat-title">Durée</div>
             <div className="stat-value text-primary">
@@ -96,6 +94,13 @@ export default function GameStats({ game }: GameStatsProps) {
               {Math.round(stats.accuracy * 100)}%
             </div>
           </div>
+          
+          <div className="stat">
+            <div className="stat-title">Temps de réponse moyen</div>
+            <div className="stat-value text-warning">
+              {stats.averageResponseTime}s
+            </div>
+          </div>
         </div>
 
         {stats.playerStats && stats.playerStats.length > 0 && (
@@ -110,19 +115,26 @@ export default function GameStats({ game }: GameStatsProps) {
                       <div className="w-8 h-8 bg-primary text-primary-content rounded-full flex items-center justify-center text-sm font-bold">
                         {index + 1}
                       </div>
-                      <div>
-                        <div className="font-semibold">{player.playerName}</div>
-                        <div className="text-sm text-base-content/70">
-                          {player.correctGuesses}/{player.guesses} corrects
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                          <div className="font-semibold">{player.playerName}</div>
+                          <div className="text-lg font-bold text-primary">
+                            {player.score} pts
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-primary">
-                        {player.score} pts
-                      </div>
-                      <div className="text-sm text-base-content/70">
-                        {Math.round(player.accuracy * 100)}%
+                        <div className="flex justify-between items-center text-sm text-base-content/70">
+                          <div>
+                            {player.guesses} Answers | {player.correctGuesses} Corrects
+                          </div>
+                          <div className="flex gap-4">
+                            <div>
+                              {Math.round(player.accuracy * 100)}%
+                            </div>
+                            <div>
+                              {player.averageResponseTime}s avg
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

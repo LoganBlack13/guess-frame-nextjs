@@ -63,6 +63,10 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
   }, [selectedGame]);
 
   const handleGameSelect = (game: Game) => {
+    // Ne pas recharger si c'est la même partie
+    if (selectedGame?.id === game.id) {
+      return;
+    }
     setSelectedGame(game);
     setReplayData(null);
   };
@@ -100,13 +104,18 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Liste des parties */}
-      <div className="lg:col-span-1">
+      {/* Colonne de gauche - Liste des parties et statistiques */}
+      <div className="lg:col-span-1 space-y-6">
         <GameList
           games={games}
           selectedGame={selectedGame}
           onGameSelect={handleGameSelect}
         />
+        
+        {/* Statistiques de la partie */}
+        {selectedGame && !loading && !error && (
+          <GameStats game={selectedGame} />
+        )}
       </div>
 
       {/* Contenu principal */}
@@ -128,9 +137,6 @@ export default function ReplayView({ roomCode, games, selectedGameId }: ReplayVi
 
         {selectedGame && !loading && !error && (
           <div className="space-y-6">
-            {/* Statistiques de la partie */}
-            <GameStats game={selectedGame} />
-
             {/* Actions */}
             <div className="card bg-base-200">
               <div className="card-body">
