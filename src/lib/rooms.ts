@@ -350,6 +350,7 @@ export async function createRoom(hostName: string): Promise<CreateRoomResult> {
             name: trimmedName,
             role: "host",
             joinedAt: now,
+            lastSeenAt: now,
             sessionToken,
             score: 0,
           },
@@ -392,7 +393,7 @@ export async function joinRoom(
   const trimmedName = playerName.trim();
 
   if (!trimmedCode || trimmedCode.length !== CODE_LENGTH) {
-    throw new Error("Enter a valid 6-digit room code");
+    throw new Error("Enter a 6-digit room code");
   }
 
   if (!trimmedName) {
@@ -413,7 +414,44 @@ export async function joinRoom(
       throw new Error("This match has already started. Ask the host for a fresh room.");
     }
 
-    if (existingRoom.players.length >= MAX_ROOM_SIZE) {
+    // Vérifier s'il y a un joueur inactif avec le même nom
+    const inactivePlayer = existingRoom.players.find(
+      p => p.name === trimmedName && p.role === "guest"
+    );
+
+    if (inactivePlayer) {
+      // Réactiver le joueur existant
+      const now = new Date();
+      const reactivatedPlayer = await tx.player.update({
+        where: { id: inactivePlayer.id },
+        data: {
+          lastSeenAt: now,
+          // Garder le score existant
+        },
+      });
+
+      const refreshedRoom = await tx.room.findUnique({
+        where: { code: existingRoom.code },
+        include: defaultRoomInclude,
+      });
+
+      if (!refreshedRoom) {
+        throw new Error("Room not found after reactivation");
+      }
+
+      return {
+        room: refreshedRoom,
+        player: reactivatedPlayer,
+      };
+    }
+
+    // Vérifier la capacité de la room (seulement les joueurs actifs)
+    const activePlayers = existingRoom.players.filter(p => {
+      const timeSinceLastSeen = Date.now() - p.lastSeenAt.getTime();
+      return timeSinceLastSeen < 30000; // 30 secondes d'inactivité
+    });
+
+    if (activePlayers.length >= MAX_ROOM_SIZE) {
       throw new Error("Room is at capacity. Check with the host for another code.");
     }
 
@@ -426,6 +464,7 @@ export async function joinRoom(
         name: trimmedName,
         role: "guest",
         joinedAt: now,
+        lastSeenAt: now,
         roomCode: existingRoom.code,
         score: 0,
       },
@@ -466,7 +505,20 @@ export async function getRoom(roomCode: string): Promise<Room | undefined> {
 
   if (!room) return undefined;
 
-  return toRoom(room);
+  // Filtrer les joueurs inactifs (plus de 30 secondes d'inactivité)
+  const cutoffTime = new Date(Date.now() - 30000);
+  const activePlayers = room.players.filter(player => {
+    if (player.role === "host") return true; // Toujours garder l'hôte
+    return player.lastSeenAt > cutoffTime;
+  });
+
+  // Créer une room avec seulement les joueurs actifs
+  const roomWithActivePlayers = {
+    ...room,
+    players: activePlayers,
+  };
+
+  return toRoom(roomWithActivePlayers);
 }
 
 export async function removePlayer(roomCode: string, playerId: string): Promise<void> {
@@ -484,6 +536,52 @@ export async function removePlayer(roomCode: string, playerId: string): Promise<
       where: {
         id: trimmedPlayerId,
         roomCode: trimmedCode,
+      },
+    });
+
+    if (deleted.count === 0) {
+      return;
+    }
+
+    const remaining = await tx.player.count({ where: { roomCode: trimmedCode } });
+    if (remaining === 0) {
+      await tx.room.delete({ where: { code: trimmedCode } });
+      snapshot = undefined;
+      return;
+    }
+
+    const roomRecord = await tx.room.findUnique({
+      where: { code: trimmedCode },
+      include: defaultRoomInclude,
+    });
+
+    if (roomRecord) {
+      snapshot = toRoom(roomRecord);
+    }
+  });
+
+  if (snapshot) {
+    publishRoomUpdate(snapshot);
+  }
+}
+
+export async function cleanupInactivePlayers(roomCode: string): Promise<void> {
+  const trimmedCode = roomCode.trim();
+  if (!trimmedCode) return;
+
+  const cutoffTime = new Date(Date.now() - 30000); // 30 secondes d'inactivité
+
+  let snapshot: Room | undefined;
+
+  await prisma.$transaction(async (tx) => {
+    // Supprimer les joueurs inactifs (sauf l'hôte)
+    const deleted = await tx.player.deleteMany({
+      where: {
+        roomCode: trimmedCode,
+        role: "guest",
+        lastSeenAt: {
+          lt: cutoffTime,
+        },
       },
     });
 

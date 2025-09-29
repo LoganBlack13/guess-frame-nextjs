@@ -507,7 +507,7 @@ export default function PartyClient({
         {room.status === "completed" ? (
           <>
             {/* Game Completed Header */}
-            <GameCompleted />
+            <GameCompleted roomCode={roomCode} />
             
             {/* Podium for top 3 players */}
             <Podium 

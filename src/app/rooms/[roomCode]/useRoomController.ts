@@ -71,6 +71,8 @@ export function useRoomController({
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const autoAdvanceTriggeredRef = useRef(false);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const cleanupIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const canManage = Boolean(hostSessionActive);
   const effectivePlayerId = playerId ?? null;
@@ -238,6 +240,74 @@ export function useRoomController({
       source.removeEventListener("party:countdown", handlePartyCountdown);
       source.removeEventListener("chat:message", handleChatMessage);
       source.close();
+    };
+  }, [roomCode, roomMissing]);
+
+  // Fonction pour envoyer un heartbeat
+  const sendHeartbeat = useCallback(async () => {
+    if (!effectivePlayerId) return;
+
+    try {
+      await fetch(`/api/rooms/${roomCode}/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: effectivePlayerId }),
+      });
+    } catch (error) {
+      console.error('Failed to send heartbeat:', error);
+    }
+  }, [effectivePlayerId, roomCode]);
+
+  // Effect pour gérer le heartbeat
+  useEffect(() => {
+    if (!effectivePlayerId || roomMissing) {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Envoyer un heartbeat immédiatement
+    sendHeartbeat();
+
+    // Puis toutes les 10 secondes
+    heartbeatIntervalRef.current = setInterval(sendHeartbeat, 10000);
+
+    return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+    };
+  }, [effectivePlayerId, roomMissing, sendHeartbeat]);
+
+  // Effect pour nettoyer les joueurs inactifs périodiquement
+  useEffect(() => {
+    if (roomMissing) {
+      if (cleanupIntervalRef.current) {
+        clearInterval(cleanupIntervalRef.current);
+        cleanupIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Nettoyer toutes les 30 secondes
+    cleanupIntervalRef.current = setInterval(async () => {
+      try {
+        await fetch(`/api/rooms/${roomCode}/cleanup`, {
+          method: 'POST',
+        });
+      } catch (error) {
+        console.error('Failed to cleanup inactive players:', error);
+      }
+    }, 30000);
+
+    return () => {
+      if (cleanupIntervalRef.current) {
+        clearInterval(cleanupIntervalRef.current);
+        cleanupIntervalRef.current = null;
+      }
     };
   }, [roomCode, roomMissing]);
 

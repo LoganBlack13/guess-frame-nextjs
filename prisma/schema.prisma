@@ -29,6 +29,7 @@ model Player {
   name      String
   role      String
   joinedAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
   roomCode  String
   sessionToken String? @unique
   score     Int      @default(0)
@@ -36,6 +37,7 @@ model Player {
   guesses   Guess[]
 
   @@index([roomCode])
+  @@index([lastSeenAt])
 }
 
 model Frame {
